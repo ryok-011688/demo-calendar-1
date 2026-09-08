@@ -37,7 +37,7 @@
   }
 
   .app {
-    width: 80vw;
+    width: 90vw;
     height: 80vh;
     display: flex;
     flex-direction: column;
@@ -71,8 +71,57 @@
   .calendar-panel {
     flex: 6;
     min-width: 0;
+    position: relative;
+    overflow: hidden;
     background: #f0f0f2;
     color: #1a1b1e;
+  }
+
+  .calendar-bg {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+  }
+
+  .calendar-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(240, 240, 242, 0.7);
+    z-index: 1;
+  }
+
+  .calendar-content {
+    position: relative;
+    z-index: 2;
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .calendar-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .bg-upload-label,
+  .bg-reset-btn {
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid #dcdde0;
+    background: #f2f2f4;
+    color: #1a1b1e;
+    cursor: pointer;
+  }
+
+  .bg-upload-label:hover,
+  .bg-reset-btn:hover {
+    background: #e4e5e8;
   }
 
   .calendar-panel .calendar-header h2 {
@@ -137,6 +186,118 @@
   .panel-title {
     margin: 0 0 16px;
     font-size: 1.2rem;
+  }
+
+  /* --- タスク表記エリア（目に優しい配色） --- */
+  .task-column .panel {
+    background: #2a2826;
+    border-color: #3d3a35;
+    color: #e6ded1;
+  }
+
+  .task-column .panel-title {
+    color: #e6ded1;
+  }
+
+  .task-column .filter-label {
+    color: #e6ded1;
+  }
+
+  .task-column #task-input,
+  .task-column #task-date-input,
+  .task-column #task-time-input,
+  .task-column #task-detail-input,
+  .task-column #task-color-input {
+    background: #221f1d;
+    border-color: #3d3a35;
+    color: #e6ded1;
+  }
+
+  .task-column .color-swatch {
+    border-color: rgba(230, 222, 209, 0.35);
+  }
+
+  .task-column #task-input:focus,
+  .task-column #task-date-input:focus,
+  .task-column #task-time-input:focus,
+  .task-column #task-detail-input:focus {
+    border-color: #7ea99a;
+  }
+
+  .task-column #add-btn {
+    background: #7ea99a;
+    color: #1c1b19;
+  }
+
+  .task-column #add-btn:hover {
+    background: #93bcae;
+  }
+
+  .task-column .task-detail {
+    color: #a89d8c;
+  }
+
+  .task-column #task-list li {
+    border-bottom-color: #3d3a35;
+  }
+
+  .task-column #task-list input[type="checkbox"] {
+    accent-color: #7ea99a;
+  }
+
+  .task-column .task-text {
+    color: #e6ded1;
+  }
+
+  .task-column .task-edit-input {
+    border-color: #7ea99a;
+    background: #221f1d;
+    color: #e6ded1;
+  }
+
+  .task-column .task-edit-color-input {
+    border-color: #3d3a35;
+    background: #221f1d;
+  }
+
+  .task-column .edit-save-btn {
+    background: #7ea99a;
+    color: #1c1b19;
+  }
+
+  .task-column .edit-save-btn:hover {
+    background: #93bcae;
+  }
+
+  .task-column .edit-cancel-btn {
+    border-color: #3d3a35;
+    color: #a89d8c;
+  }
+
+  .task-column .edit-cancel-btn:hover {
+    background: #3d3a35;
+  }
+
+  .task-column .task-text.completed {
+    color: #a89d8c;
+  }
+
+  .task-column .task-date {
+    color: #a89d8c;
+  }
+
+  .task-column .delete-btn {
+    border-color: #d98a8a;
+    color: #d98a8a;
+  }
+
+  .task-column .delete-btn:hover {
+    background: #d98a8a;
+    color: #2a2826;
+  }
+
+  .task-column .empty-message {
+    color: #a89d8c;
   }
 
   /* --- カレンダー --- */
@@ -283,58 +444,58 @@
     opacity: 0.6;
   }
 
+  .day-cell-task {
+    cursor: grab;
+  }
+
+  .day-cell-task:active {
+    cursor: grabbing;
+  }
+
+  .day-cell.drag-over {
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
+  }
+
   .day-cell.selected .day-cell-task {
     background: rgba(255, 255, 255, 0.3);
     color: #fff;
   }
 
   .filter-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
     margin-bottom: 16px;
-    gap: 8px;
   }
 
   .filter-label {
-    font-size: 1rem;
-    color: var(--text-muted);
-  }
-
-  .show-all-btn {
-    border: 1px solid var(--border);
-    background: #1e1f23;
+    font-size: 1.2rem;
+    font-weight: 700;
     color: var(--text);
-    border-radius: 6px;
-    padding: 8px 14px;
-    cursor: pointer;
-    font-size: 0.95rem;
-  }
-
-  .show-all-btn:hover {
-    background: var(--border);
-  }
-
-  .show-all-btn:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-
-  .show-all-btn:disabled:hover {
-    background: #1e1f23;
   }
 
   /* --- タスク入力 --- */
   .input-row {
     display: flex;
     flex-wrap: wrap;
+    align-items: flex-end;
     gap: 10px;
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .field-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
   }
 
   #task-input {
     flex: 1;
     min-width: 120px;
-    padding: 12px 14px;
+    height: 44px;
+    padding: 0 14px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: #1e1f23;
@@ -343,8 +504,10 @@
     outline: none;
   }
 
-  #task-date-input {
-    padding: 12px 14px;
+  #task-date-input,
+  #task-time-input {
+    height: 44px;
+    padding: 0 14px;
     border-radius: 8px;
     border: 1px solid var(--border);
     background: #1e1f23;
@@ -354,13 +517,40 @@
     color-scheme: dark;
   }
 
+  #task-detail-input {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #1e1f23;
+    color: var(--text);
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+  }
+
+  #task-color-input {
+    width: 44px;
+    height: 44px;
+    padding: 2px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #1e1f23;
+    cursor: pointer;
+  }
+
   #task-input:focus,
-  #task-date-input:focus {
+  #task-date-input:focus,
+  #task-time-input:focus,
+  #task-detail-input:focus {
     border-color: var(--accent);
   }
 
   #add-btn {
-    padding: 12px 20px;
+    height: 44px;
+    padding: 0 20px;
     border: none;
     border-radius: 8px;
     background: var(--accent);
@@ -385,14 +575,21 @@
 
   #task-list li {
     display: flex;
-    align-items: center;
-    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
     padding: 12px 4px;
     border-bottom: 1px solid var(--border);
   }
 
   #task-list li:last-child {
     border-bottom: none;
+  }
+
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   #task-list input[type="checkbox"] {
@@ -403,15 +600,76 @@
     flex-shrink: 0;
   }
 
+  .color-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+  }
+
   .task-text {
     flex: 1;
     word-break: break-word;
     font-size: 1.05rem;
+    cursor: text;
   }
 
   .task-text.completed {
     text-decoration: line-through;
     color: var(--text-muted);
+  }
+
+  .task-edit-input {
+    flex: 1;
+    font-size: 1.05rem;
+    font-family: inherit;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: inherit;
+    outline: none;
+  }
+
+  .task-edit-color-input {
+    width: 36px;
+    height: 36px;
+    padding: 2px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .edit-save-btn,
+  .edit-cancel-btn {
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .edit-save-btn {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .edit-save-btn:hover {
+    background: var(--accent-hover);
+  }
+
+  .edit-cancel-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+
+  .edit-cancel-btn:hover {
+    background: var(--border);
   }
 
   .task-date {
@@ -421,18 +679,28 @@
   }
 
   .delete-btn {
-    border: none;
+    border: 1px solid var(--danger);
     background: transparent;
     color: var(--danger);
-    font-size: 0.95rem;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
-    padding: 6px 10px;
+    padding: 6px 12px;
     border-radius: 6px;
   }
 
   .delete-btn:hover {
-    color: var(--danger-hover);
-    background: rgba(255, 107, 107, 0.1);
+    color: #fff;
+    background: var(--danger);
+  }
+
+  .task-detail {
+    margin: 0;
+    margin-left: 58px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    white-space: pre-wrap;
+    word-break: break-word;
   }
 
   .empty-message {
@@ -447,21 +715,30 @@
     <h1>スケジューラー（Todo兼用）</h1>
     <div class="layout">
       <div class="panel calendar-panel">
-        <div class="calendar-header">
-          <button class="month-nav-btn" id="prev-month-btn">&lt; 前月</button>
-          <h2 id="calendar-title"></h2>
-          <button class="month-nav-btn" id="next-month-btn">次月 &gt;</button>
+        <div class="calendar-bg" id="calendar-bg"></div>
+        <div class="calendar-overlay"></div>
+        <div class="calendar-content">
+          <div class="calendar-header">
+            <button class="month-nav-btn" id="prev-month-btn">&lt; 前月</button>
+            <h2 id="calendar-title"></h2>
+            <button class="month-nav-btn" id="next-month-btn">次月 &gt;</button>
+          </div>
+          <div class="calendar-toolbar">
+            <label class="bg-upload-label" for="calendar-bg-input">背景写真を設定</label>
+            <input type="file" id="calendar-bg-input" accept="image/*" hidden>
+            <button type="button" class="bg-reset-btn" id="calendar-bg-reset-btn">背景をリセット</button>
+          </div>
+          <div class="weekday-row">
+            <span class="weekday">日</span>
+            <span class="weekday">月</span>
+            <span class="weekday">火</span>
+            <span class="weekday">水</span>
+            <span class="weekday">木</span>
+            <span class="weekday">金</span>
+            <span class="weekday">土</span>
+          </div>
+          <div class="calendar-grid" id="calendar-grid"></div>
         </div>
-        <div class="weekday-row">
-          <span class="weekday">日</span>
-          <span class="weekday">月</span>
-          <span class="weekday">火</span>
-          <span class="weekday">水</span>
-          <span class="weekday">木</span>
-          <span class="weekday">金</span>
-          <span class="weekday">土</span>
-        </div>
-        <div class="calendar-grid" id="calendar-grid"></div>
       </div>
 
       <div class="task-column">
@@ -469,15 +746,26 @@
           <h2 class="panel-title">タスク追加</h2>
           <div class="input-row">
             <input type="text" id="task-input" placeholder="タスクを入力..." autocomplete="off">
-            <input type="date" id="task-date-input">
+            <div class="field-group">
+              <label class="field-label" for="task-date-input">日付を入力</label>
+              <input type="date" id="task-date-input">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="task-time-input">時間を入力</label>
+              <input type="time" id="task-time-input">
+            </div>
+            <div class="field-group">
+              <label class="field-label" for="task-color-input">色分け</label>
+              <input type="color" id="task-color-input" value="#6c8cff" title="タスクの色">
+            </div>
             <button id="add-btn">追加</button>
           </div>
+          <textarea id="task-detail-input" rows="2" placeholder="詳細（任意）"></textarea>
         </div>
 
         <div class="panel list-panel">
           <div class="filter-row">
-            <span class="filter-label" id="filter-label">すべてのタスク</span>
-            <button class="show-all-btn" id="show-all-btn">すべて表示</button>
+            <span class="filter-label" id="filter-label"></span>
           </div>
           <ul id="task-list"></ul>
         </div>
@@ -491,18 +779,24 @@
   const today = new Date();
   let viewYear = today.getFullYear();
   let viewMonth = today.getMonth();
-  let selectedDate = null;
+  let selectedDate = todayStr();
+  let editingTaskId = null;
 
   const taskInput = document.getElementById('task-input');
   const taskDateInput = document.getElementById('task-date-input');
+  const taskTimeInput = document.getElementById('task-time-input');
+  const taskDetailInput = document.getElementById('task-detail-input');
+  const taskColorInput = document.getElementById('task-color-input');
   const addBtn = document.getElementById('add-btn');
   const taskList = document.getElementById('task-list');
   const calendarGrid = document.getElementById('calendar-grid');
   const calendarTitle = document.getElementById('calendar-title');
   const prevMonthBtn = document.getElementById('prev-month-btn');
   const nextMonthBtn = document.getElementById('next-month-btn');
-  const showAllBtn = document.getElementById('show-all-btn');
   const filterLabel = document.getElementById('filter-label');
+  const calendarBg = document.getElementById('calendar-bg');
+  const calendarBgInput = document.getElementById('calendar-bg-input');
+  const calendarBgResetBtn = document.getElementById('calendar-bg-reset-btn');
 
   function saveTasks() {
     localStorage.setItem('tasks', JSON.stringify(tasks));
@@ -522,6 +816,24 @@
   const ROKUYO_NAMES = ['先勝', '友引', '先負', '仏滅', '大安', '赤口'];
   function getRokuyo(month, day) {
     return ROKUYO_NAMES[(month + day) % 6];
+  }
+
+  function getContrastTextColor(hex) {
+    const c = hex.replace('#', '');
+    const r = parseInt(c.substring(0, 2), 16);
+    const g = parseInt(c.substring(2, 4), 16);
+    const b = parseInt(c.substring(4, 6), 16);
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    return luminance > 0.6 ? '#1a1b1e' : '#ffffff';
+  }
+
+  function applyCalendarBg(dataUrl) {
+    calendarBg.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : 'none';
+  }
+
+  const savedCalendarBg = localStorage.getItem('calendarBgImage');
+  if (savedCalendarBg) {
+    applyCalendarBg(savedCalendarBg);
   }
 
   function renderCalendar() {
@@ -575,7 +887,17 @@
         dayTasks.forEach(t => {
           const item = document.createElement('div');
           item.className = 'day-cell-task' + (t.completed ? ' completed' : '');
-          item.textContent = t.text;
+          item.textContent = t.time ? `${t.time} ${t.text}` : t.text;
+          if (t.color) {
+            item.style.backgroundColor = t.color;
+            item.style.color = getContrastTextColor(t.color);
+          }
+          item.draggable = true;
+          item.addEventListener('dragstart', (e) => {
+            e.stopPropagation();
+            e.dataTransfer.setData('text/plain', String(t.id));
+            e.dataTransfer.effectAllowed = 'move';
+          });
           taskListEl.appendChild(item);
         });
         cell.appendChild(taskListEl);
@@ -588,14 +910,9 @@
   function renderTasks() {
     taskList.innerHTML = '';
 
-    const visibleTasks = selectedDate
-      ? tasks.filter(t => t.date === selectedDate)
-      : tasks;
+    const visibleTasks = tasks.filter(t => t.date === selectedDate);
 
-    filterLabel.textContent = selectedDate
-      ? `${selectedDate} のタスク`
-      : 'すべてのタスク';
-    showAllBtn.disabled = !selectedDate;
+    filterLabel.textContent = `${selectedDate} のタスク`;
 
     if (visibleTasks.length === 0) {
       const empty = document.createElement('li');
@@ -609,32 +926,120 @@
       const li = document.createElement('li');
       li.dataset.id = task.id;
 
+      const row = document.createElement('div');
+      row.className = 'task-row';
+
+      const swatch = document.createElement('span');
+      swatch.className = 'color-swatch';
+      swatch.style.backgroundColor = task.color || 'var(--accent)';
+
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.checked = task.completed;
       checkbox.className = 'toggle-checkbox';
 
-      const span = document.createElement('span');
-      span.className = 'task-text' + (task.completed ? ' completed' : '');
-      span.textContent = task.text;
+      row.appendChild(swatch);
+      row.appendChild(checkbox);
 
-      li.appendChild(checkbox);
-      li.appendChild(span);
+      if (editingTaskId === task.id) {
+        const editInput = document.createElement('input');
+        editInput.type = 'text';
+        editInput.className = 'task-edit-input';
+        editInput.value = task.text;
 
-      if (task.date) {
-        const dateLabel = document.createElement('span');
-        dateLabel.className = 'task-date';
-        dateLabel.textContent = task.date;
-        li.appendChild(dateLabel);
+        const editColorInput = document.createElement('input');
+        editColorInput.type = 'color';
+        editColorInput.className = 'task-edit-color-input';
+        editColorInput.value = task.color || '#6c8cff';
+        editColorInput.title = 'タスクの色';
+
+        const cancelEdit = () => {
+          editingTaskId = null;
+          renderTasks();
+        };
+
+        const commitEdit = () => {
+          const trimmed = editInput.value.trim();
+          if (trimmed) {
+            task.text = trimmed;
+            task.color = editColorInput.value;
+            saveTasks();
+          }
+          editingTaskId = null;
+          renderTasks();
+          renderCalendar();
+        };
+
+        editInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commitEdit();
+          } else if (e.key === 'Escape') {
+            cancelEdit();
+          }
+        });
+
+        const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
+        saveBtn.className = 'edit-save-btn';
+        saveBtn.textContent = '保存';
+        saveBtn.addEventListener('click', commitEdit);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'edit-cancel-btn';
+        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.addEventListener('click', cancelEdit);
+
+        row.appendChild(editInput);
+        row.appendChild(editColorInput);
+        row.appendChild(saveBtn);
+        row.appendChild(cancelBtn);
+      } else {
+        const span = document.createElement('span');
+        span.className = 'task-text' + (task.completed ? ' completed' : '');
+        span.textContent = task.text;
+        span.title = 'ダブルクリックで編集';
+        span.addEventListener('dblclick', () => {
+          editingTaskId = task.id;
+          renderTasks();
+        });
+        row.appendChild(span);
       }
 
-      const deleteBtn = document.createElement('button');
-      deleteBtn.className = 'delete-btn';
-      deleteBtn.textContent = '削除';
-      li.appendChild(deleteBtn);
+      if (task.date && editingTaskId !== task.id) {
+        const dateLabel = document.createElement('span');
+        dateLabel.className = 'task-date';
+        dateLabel.textContent = task.time ? `${task.date} ${task.time}` : task.date;
+        row.appendChild(dateLabel);
+      }
+
+      if (editingTaskId !== task.id) {
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'delete-btn';
+        deleteBtn.textContent = '削除';
+        row.appendChild(deleteBtn);
+      }
+
+      li.appendChild(row);
+
+      if (task.detail) {
+        const detail = document.createElement('p');
+        detail.className = 'task-detail';
+        detail.textContent = task.detail;
+        li.appendChild(detail);
+      }
 
       taskList.appendChild(li);
     });
+
+    if (editingTaskId !== null) {
+      const activeInput = taskList.querySelector('.task-edit-input');
+      if (activeInput) {
+        activeInput.focus();
+        activeInput.select();
+      }
+    }
   }
 
   function addTask() {
@@ -645,11 +1050,16 @@
       id: Date.now(),
       text: text,
       completed: false,
-      date: taskDateInput.value || null
+      date: taskDateInput.value || null,
+      time: taskTimeInput.value || null,
+      detail: taskDetailInput.value.trim() || null,
+      color: taskColorInput.value
     });
 
     taskInput.value = '';
     taskDateInput.value = '';
+    taskTimeInput.value = '';
+    taskDetailInput.value = '';
     saveTasks();
     renderTasks();
     renderCalendar();
@@ -673,12 +1083,7 @@
 
   function selectDate(dateStr) {
     selectedDate = dateStr;
-    renderCalendar();
-    renderTasks();
-  }
-
-  function clearDateFilter() {
-    selectedDate = null;
+    editingTaskId = null;
     renderCalendar();
     renderTasks();
   }
@@ -703,6 +1108,35 @@
     selectDate(cell.dataset.date);
   });
 
+  calendarGrid.addEventListener('dragover', (e) => {
+    const cell = e.target.closest('.day-cell');
+    if (!cell || cell.classList.contains('empty')) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    cell.classList.add('drag-over');
+  });
+
+  calendarGrid.addEventListener('dragleave', (e) => {
+    const cell = e.target.closest('.day-cell');
+    if (cell) cell.classList.remove('drag-over');
+  });
+
+  calendarGrid.addEventListener('drop', (e) => {
+    const cell = e.target.closest('.day-cell');
+    if (!cell || cell.classList.contains('empty')) return;
+    e.preventDefault();
+    cell.classList.remove('drag-over');
+
+    const taskId = Number(e.dataTransfer.getData('text/plain'));
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      task.date = cell.dataset.date;
+      saveTasks();
+      renderCalendar();
+      renderTasks();
+    }
+  });
+
   prevMonthBtn.addEventListener('click', () => {
     viewMonth--;
     if (viewMonth < 0) {
@@ -721,7 +1155,28 @@
     renderCalendar();
   });
 
-  showAllBtn.addEventListener('click', clearDateFilter);
+  calendarBgInput.addEventListener('change', () => {
+    const file = calendarBgInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      applyCalendarBg(dataUrl);
+      try {
+        localStorage.setItem('calendarBgImage', dataUrl);
+      } catch (err) {
+        console.warn('背景画像の保存に失敗しました（サイズが大きすぎる可能性があります）', err);
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  calendarBgResetBtn.addEventListener('click', () => {
+    applyCalendarBg(null);
+    localStorage.removeItem('calendarBgImage');
+    calendarBgInput.value = '';
+  });
 
   renderCalendar();
   renderTasks();
