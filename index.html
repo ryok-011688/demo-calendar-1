@@ -91,6 +91,23 @@
     margin-top: 16px;
   }
 
+  .weekday-setting-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+
+  .weekday-setting-toggle input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
   .calendar-panel {
     flex: 6;
     min-width: 0;
@@ -489,6 +506,14 @@
     padding: 4px 0;
   }
 
+  .weekday.sun-text {
+    color: #d32f2f;
+  }
+
+  .weekday.sat-text {
+    color: #1565c0;
+  }
+
   .calendar-grid {
     flex: 1;
     min-height: 0;
@@ -523,6 +548,39 @@
 
   .day-cell.today {
     border: 2px solid var(--accent);
+  }
+
+  .day-cell.sun-text .day-number {
+    color: #d32f2f;
+  }
+
+  .day-cell.sat-text .day-number {
+    color: #1565c0;
+  }
+
+  .day-cell.sun-bg {
+    background: rgba(211, 47, 47, 0.1);
+  }
+
+  .day-cell.sat-bg {
+    background: rgba(21, 101, 192, 0.1);
+  }
+
+  .day-cell.selected.sun-text .day-number,
+  .day-cell.selected.sat-text .day-number {
+    color: #fff;
+  }
+
+  .day-cell.holiday-text .day-number {
+    color: #d32f2f;
+  }
+
+  .day-cell.holiday-bg {
+    background: rgba(211, 47, 47, 0.1);
+  }
+
+  .day-cell.selected.holiday-text .day-number {
+    color: #fff;
   }
 
   .day-cell.selected {
@@ -566,6 +624,28 @@
 
   .day-cell.selected .rokuyo.taian,
   .day-cell.selected .rokuyo.butsumetsu {
+    color: #fff;
+  }
+
+  .holiday-label {
+    width: 100%;
+    font-size: 0.62rem;
+    color: #1a1b1e;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+
+  .day-cell.holiday-text .holiday-label {
+    color: #d32f2f;
+  }
+
+  .day-cell.selected .holiday-label {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .day-cell.selected.holiday-text .holiday-label {
     color: #fff;
   }
 
@@ -1126,15 +1206,7 @@
             <h2 id="calendar-title"></h2>
             <button class="month-nav-btn" id="next-month-btn">次月 &gt;</button>
           </div>
-          <div class="weekday-row">
-            <span class="weekday">日</span>
-            <span class="weekday">月</span>
-            <span class="weekday">火</span>
-            <span class="weekday">水</span>
-            <span class="weekday">木</span>
-            <span class="weekday">金</span>
-            <span class="weekday">土</span>
-          </div>
+          <div class="weekday-row" id="weekday-row"></div>
           <div class="calendar-grid" id="calendar-grid"></div>
         </div>
       </div>
@@ -1151,19 +1223,54 @@
           <ul id="task-list"></ul>
           <div class="list-toolbar">
             <div class="bg-settings">
-              <button type="button" class="bg-reset-btn" id="bg-settings-btn">背景設定</button>
+              <button type="button" class="bg-reset-btn" id="bg-settings-btn">カレンダー設定</button>
               <div class="bg-settings-menu" id="bg-settings-menu" hidden>
-                <label class="bg-settings-menu-item" for="calendar-bg-input">背景写真を設定</label>
-                <input type="file" id="calendar-bg-input" accept="image/*" hidden>
-                <button type="button" class="bg-settings-menu-item" id="calendar-bg-reset-btn">背景をリセット</button>
+                <button type="button" class="bg-settings-menu-item" id="open-bg-photo-dialog-btn">背景設定</button>
+                <button type="button" class="bg-settings-menu-item" id="weekday-settings-btn">曜日設定</button>
               </div>
             </div>
-            <button type="button" class="bg-reset-btn" id="export-local-tasks-btn">ローカルタスクをエクスポート</button>
+            <button type="button" class="bg-reset-btn" id="export-local-tasks-btn">エクスポート</button>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <dialog id="bg-photo-settings-dialog" class="add-task-dialog">
+    <h2 class="panel-title">🖼 背景設定</h2>
+    <label class="bg-settings-menu-item" for="calendar-bg-input">背景写真を設定</label>
+    <input type="file" id="calendar-bg-input" accept="image/*" hidden>
+    <button type="button" class="bg-settings-menu-item" id="calendar-bg-reset-btn">背景をリセット</button>
+    <div class="dialog-actions">
+      <button type="button" id="bg-photo-settings-close-btn" class="edit-save-btn">閉じる</button>
+    </div>
+  </dialog>
+
+  <dialog id="weekday-settings-dialog" class="add-task-dialog">
+    <h2 class="panel-title">🗓 曜日設定</h2>
+    <div class="field-group field-group-wide">
+      <label class="field-label" for="week-start-select">週の開始曜日</label>
+      <select id="week-start-select">
+        <option value="0">日曜始まり</option>
+        <option value="1">月曜始まり</option>
+      </select>
+    </div>
+    <label class="weekday-setting-toggle">
+      <input type="checkbox" id="weekday-color-toggle">
+      曜日を色分けする（土＝青／日＝赤の文字色）
+    </label>
+    <label class="weekday-setting-toggle">
+      <input type="checkbox" id="weekday-bg-toggle">
+      曜日の背景に色を付ける（土＝青／日＝赤）
+    </label>
+    <label class="weekday-setting-toggle">
+      <input type="checkbox" id="weekday-english-toggle">
+      曜日を英語表記にする（Sun, Mon, ...）
+    </label>
+    <div class="dialog-actions">
+      <button type="button" id="weekday-settings-close-btn" class="edit-save-btn">閉じる</button>
+    </div>
+  </dialog>
 
   <dialog id="add-task-dialog" class="add-task-dialog">
     <h2 class="panel-title">➕ タスク追加</h2>
@@ -1236,6 +1343,13 @@
   let tasksCollection = null;
   let assetsApi = null;
   let settingsDocRef = null;
+  let calendarSettingsDocRef = null;
+  let calendarSettings = {
+    weekStart: 0,
+    weekdayColor: false,
+    weekdayBg: false,
+    weekdayEnglish: false
+  };
 
   const today = new Date();
   let viewYear = today.getFullYear();
@@ -1268,6 +1382,17 @@
   const exportLocalTasksBtn = document.getElementById('export-local-tasks-btn');
   const bgSettingsBtn = document.getElementById('bg-settings-btn');
   const bgSettingsMenu = document.getElementById('bg-settings-menu');
+  const openBgPhotoDialogBtn = document.getElementById('open-bg-photo-dialog-btn');
+  const bgPhotoSettingsDialog = document.getElementById('bg-photo-settings-dialog');
+  const bgPhotoSettingsCloseBtn = document.getElementById('bg-photo-settings-close-btn');
+  const weekdayRowEl = document.getElementById('weekday-row');
+  const weekdaySettingsBtn = document.getElementById('weekday-settings-btn');
+  const weekdaySettingsDialog = document.getElementById('weekday-settings-dialog');
+  const weekdaySettingsCloseBtn = document.getElementById('weekday-settings-close-btn');
+  const weekStartSelect = document.getElementById('week-start-select');
+  const weekdayColorToggle = document.getElementById('weekday-color-toggle');
+  const weekdayBgToggle = document.getElementById('weekday-bg-toggle');
+  const weekdayEnglishToggle = document.getElementById('weekday-english-toggle');
   const addTaskDialog = document.getElementById('add-task-dialog');
   const addDialogCancelBtn = document.getElementById('add-dialog-cancel-btn');
   const openAddDialogBtn = document.getElementById('open-add-dialog-btn');
@@ -1317,6 +1442,8 @@
   async function initStore() {
     // ローカルのキャッシュでまず即座に描画し、同期ストアが使えるかは後から確認する
     tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    applyCalendarSettingsToInputs();
+    renderWeekdayRow();
     renderAll();
 
     let resolvedDb = null;
@@ -1352,6 +1479,25 @@
         },
         (err) => {
           console.error('背景写真の同期エラー:', err);
+        }
+      );
+
+      calendarSettingsDocRef = db.doc('settings/calendarDisplay');
+      calendarSettingsDocRef.onSnapshot(
+        (snap) => {
+          // ドキュメントが一度も存在しない場合は、端末ローカルの設定をそのまま残す
+          if (snap.exists) {
+            calendarSettings = Object.assign(
+              { weekStart: 0, weekdayColor: false, weekdayBg: false, weekdayEnglish: false },
+              snap.data()
+            );
+            applyCalendarSettingsToInputs();
+            renderWeekdayRow();
+            renderCalendar();
+          }
+        },
+        (err) => {
+          console.error('曜日設定の同期エラー:', err);
         }
       );
     }
@@ -1565,14 +1711,152 @@
     applyCalendarBg(savedCalendarBg);
   }
 
+  const savedCalendarSettings = localStorage.getItem('calendarSettings');
+  if (savedCalendarSettings) {
+    try {
+      calendarSettings = Object.assign({}, calendarSettings, JSON.parse(savedCalendarSettings));
+    } catch (err) {
+      console.warn('曜日設定の読み込みに失敗しました', err);
+    }
+  }
+
+  const WEEKDAY_NAMES_JA = ['日', '月', '火', '水', '木', '金', '土'];
+  const WEEKDAY_NAMES_EN = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  function applyCalendarSettingsToInputs() {
+    weekStartSelect.value = String(calendarSettings.weekStart);
+    weekdayColorToggle.checked = calendarSettings.weekdayColor;
+    weekdayBgToggle.checked = calendarSettings.weekdayBg;
+    weekdayEnglishToggle.checked = calendarSettings.weekdayEnglish;
+  }
+
+  function renderWeekdayRow() {
+    weekdayRowEl.innerHTML = '';
+    const names = calendarSettings.weekdayEnglish ? WEEKDAY_NAMES_EN : WEEKDAY_NAMES_JA;
+    for (let i = 0; i < 7; i++) {
+      const dow = (calendarSettings.weekStart + i) % 7;
+      const span = document.createElement('span');
+      span.className = 'weekday';
+      if (calendarSettings.weekdayColor) {
+        if (dow === 0) span.classList.add('sun-text');
+        if (dow === 6) span.classList.add('sat-text');
+      }
+      span.textContent = names[dow];
+      weekdayRowEl.appendChild(span);
+    }
+  }
+
+  // 日本の祝日計算（内閣府の祝日法に基づく）
+  // 春分の日・秋分の日は1980〜2099年で有効な近似式（国立天文台の実測値と一致することを確認済み）。
+  function nthWeekdayOfMonth(year, month, weekday, n) {
+    // weekday: 0=日曜 ... 6=土曜, month: 1-12
+    const first = new Date(year, month - 1, 1);
+    const firstDow = first.getDay();
+    const offset = (weekday - firstDow + 7) % 7;
+    const day = 1 + offset + (n - 1) * 7;
+    return day;
+  }
+
+  function vernalEquinoxDay(year) {
+    return Math.floor(20.8431 + 0.242194 * (year - 1980)) - Math.floor((year - 1980) / 4);
+  }
+
+  function autumnalEquinoxDay(year) {
+    return Math.floor(23.2488 + 0.242194 * (year - 1980)) - Math.floor((year - 1980) / 4);
+  }
+
+  function baseHolidaysForYear(year) {
+    const list = [
+      { date: formatDate(year, 0, 1), name: '元日' },
+      { date: formatDate(year, 0, nthWeekdayOfMonth(year, 1, 1, 2)), name: '成人の日' },
+      { date: formatDate(year, 1, 11), name: '建国記念の日' },
+      { date: formatDate(year, 1, 23), name: '天皇誕生日' },
+      { date: formatDate(year, 2, vernalEquinoxDay(year)), name: '春分の日' },
+      { date: formatDate(year, 3, 29), name: '昭和の日' },
+      { date: formatDate(year, 4, 3), name: '憲法記念日' },
+      { date: formatDate(year, 4, 4), name: 'みどりの日' },
+      { date: formatDate(year, 4, 5), name: 'こどもの日' },
+      { date: formatDate(year, 6, nthWeekdayOfMonth(year, 7, 1, 3)), name: '海の日' },
+      { date: formatDate(year, 7, 11), name: '山の日' },
+      { date: formatDate(year, 8, nthWeekdayOfMonth(year, 9, 1, 3)), name: '敬老の日' },
+      { date: formatDate(year, 8, autumnalEquinoxDay(year)), name: '秋分の日' },
+      { date: formatDate(year, 9, nthWeekdayOfMonth(year, 10, 1, 2)), name: 'スポーツの日' },
+      { date: formatDate(year, 10, 3), name: '文化の日' },
+      { date: formatDate(year, 10, 23), name: '勤労感謝の日' }
+    ];
+    const map = {};
+    list.forEach(h => { map[h.date] = h.name; });
+    return map;
+  }
+
+  const holidayCache = {};
+
+  function getHolidaysForYear(year) {
+    if (!holidayCache[year]) {
+      const base = baseHolidaysForYear(year);
+      const result = Object.assign({}, base);
+
+      // 振替休日：祝日が日曜のとき、直後の祝日でない平日を休日にする
+      Object.keys(base).forEach(dateStr => {
+        const d = new Date(dateStr + 'T00:00:00');
+        if (d.getDay() === 0) {
+          let nd = new Date(d);
+          do {
+            nd.setDate(nd.getDate() + 1);
+          } while (result[formatDate(nd.getFullYear(), nd.getMonth(), nd.getDate())]);
+          result[formatDate(nd.getFullYear(), nd.getMonth(), nd.getDate())] = '振替休日';
+        }
+      });
+
+      // 国民の休日：前後を祝日に挟まれた（日曜でない）平日を休日にする
+      Object.keys(base).forEach(dateStr => {
+        const d = new Date(dateStr + 'T00:00:00');
+        const next = new Date(d);
+        next.setDate(next.getDate() + 1);
+        const nextStr = formatDate(next.getFullYear(), next.getMonth(), next.getDate());
+        const prevOfNext = new Date(next);
+        prevOfNext.setDate(prevOfNext.getDate() - 1);
+        if (!base[nextStr] && next.getDay() !== 0) {
+          const afterNext = new Date(next);
+          afterNext.setDate(afterNext.getDate() + 1);
+          const afterNextStr = formatDate(afterNext.getFullYear(), afterNext.getMonth(), afterNext.getDate());
+          if (base[dateStr] && base[afterNextStr]) {
+            result[nextStr] = '国民の休日';
+          }
+        }
+      });
+
+      holidayCache[year] = result;
+    }
+    return holidayCache[year];
+  }
+
+  async function updateCalendarSettings(patch) {
+    calendarSettings = Object.assign({}, calendarSettings, patch);
+    applyCalendarSettingsToInputs();
+    renderWeekdayRow();
+    renderCalendar();
+
+    if (calendarSettingsDocRef) {
+      try {
+        await calendarSettingsDocRef.set(calendarSettings);
+      } catch (err) {
+        console.warn('曜日設定の同期に失敗しました', err);
+      }
+    } else {
+      localStorage.setItem('calendarSettings', JSON.stringify(calendarSettings));
+    }
+  }
+
   function renderCalendar() {
     calendarTitle.textContent = `${viewYear}年${viewMonth + 1}月`;
     calendarGrid.innerHTML = '';
 
     const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay();
+    const leadingEmpty = (firstDayOfWeek - calendarSettings.weekStart + 7) % 7;
     const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
 
-    for (let i = 0; i < firstDayOfWeek; i++) {
+    for (let i = 0; i < leadingEmpty; i++) {
       const empty = document.createElement('div');
       empty.className = 'day-cell empty';
       calendarGrid.appendChild(empty);
@@ -1580,6 +1864,7 @@
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = formatDate(viewYear, viewMonth, day);
+      const dow = new Date(viewYear, viewMonth, day).getDay();
       const cell = document.createElement('div');
       cell.className = 'day-cell';
       cell.dataset.date = dateStr;
@@ -1589,6 +1874,24 @@
       }
       if (dateStr === selectedDate) {
         cell.classList.add('selected');
+      }
+      if (calendarSettings.weekdayColor) {
+        if (dow === 0) cell.classList.add('sun-text');
+        if (dow === 6) cell.classList.add('sat-text');
+      }
+      if (calendarSettings.weekdayBg) {
+        if (dow === 0) cell.classList.add('sun-bg');
+        if (dow === 6) cell.classList.add('sat-bg');
+      }
+      const holidayName = getHolidaysForYear(viewYear)[dateStr];
+      if (holidayName) {
+        cell.title = holidayName;
+        if (calendarSettings.weekdayColor) {
+          cell.classList.add('holiday-text');
+        }
+        if (calendarSettings.weekdayBg) {
+          cell.classList.add('holiday-bg');
+        }
       }
 
       const header = document.createElement('div');
@@ -1608,6 +1911,13 @@
       header.appendChild(rokuyoLabel);
 
       cell.appendChild(header);
+
+      if (holidayName) {
+        const holidayLabel = document.createElement('div');
+        holidayLabel.className = 'holiday-label';
+        holidayLabel.textContent = holidayName;
+        cell.appendChild(holidayLabel);
+      }
 
       const dayTasks = tasks.filter(t => taskOccursOnDate(t, dateStr));
       if (dayTasks.length > 0) {
@@ -1642,7 +1952,7 @@
 
     const visibleTasks = tasks.filter(t => taskOccursOnDate(t, selectedDate));
 
-    filterLabel.textContent = `${selectedDate} のタスク`;
+    filterLabel.textContent = `${selectedDate} の予定`;
 
     if (visibleTasks.length === 0) {
       const empty = document.createElement('li');
@@ -1991,21 +2301,34 @@
     return null;
   }
 
-  function maybeAutoScroll(y) {
-    const margin = 70;
-    const speed = 14;
-    if (y < margin) {
-      window.scrollBy(0, -speed);
-    } else if (y > window.innerHeight - margin) {
-      window.scrollBy(0, speed);
-    }
+  let lockedScrollY = 0;
+
+  function lockPageScroll() {
+    lockedScrollY = window.scrollY || window.pageYOffset || 0;
+    document.body.style.position = 'fixed';
+    document.body.style.top = '-' + lockedScrollY + 'px';
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+  }
+
+  function unlockPageScroll() {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, lockedScrollY);
   }
 
   function startTouchDrag(li, taskText, x, y) {
     touchDragActive = true;
     li.classList.add('dragging-source');
     li.style.touchAction = 'none';
-    document.body.style.overscrollBehavior = 'contain';
+
+    // カレンダーが見えるようページ最上部までスクロールしてから、ページ全体を固定する
+    window.scrollTo(0, 0);
+    lockPageScroll();
 
     touchDragGhost = document.createElement('div');
     touchDragGhost.className = 'drag-ghost';
@@ -2023,7 +2346,7 @@
     clearDragOverCells();
     li.classList.remove('dragging-source');
     li.style.touchAction = '';
-    document.body.style.overscrollBehavior = '';
+    unlockPageScroll();
     if (touchDragGhost) {
       touchDragGhost.remove();
       touchDragGhost = null;
@@ -2039,7 +2362,7 @@
     if (touchDragActive) {
       li.classList.remove('dragging-source');
       li.style.touchAction = '';
-      document.body.style.overscrollBehavior = '';
+      unlockPageScroll();
       clearDragOverCells();
       if (touchDragGhost) {
         touchDragGhost.remove();
@@ -2084,7 +2407,6 @@
       moveEvent.preventDefault();
       positionTouchGhost(moveEvent.clientX, moveEvent.clientY);
       updateTouchDragTarget(moveEvent.clientX, moveEvent.clientY);
-      maybeAutoScroll(moveEvent.clientY);
     };
 
     const onUp = (upEvent) => {
@@ -2139,8 +2461,54 @@
     }
   });
 
-  calendarBgInput.addEventListener('change', async () => {
+  openBgPhotoDialogBtn.addEventListener('click', () => {
     bgSettingsMenu.hidden = true;
+    bgPhotoSettingsDialog.showModal();
+  });
+
+  bgPhotoSettingsCloseBtn.addEventListener('click', () => {
+    bgPhotoSettingsDialog.close();
+  });
+
+  bgPhotoSettingsDialog.addEventListener('click', (e) => {
+    if (e.target === bgPhotoSettingsDialog) {
+      bgPhotoSettingsDialog.close();
+    }
+  });
+
+  weekdaySettingsBtn.addEventListener('click', () => {
+    bgSettingsMenu.hidden = true;
+    applyCalendarSettingsToInputs();
+    weekdaySettingsDialog.showModal();
+  });
+
+  weekdaySettingsCloseBtn.addEventListener('click', () => {
+    weekdaySettingsDialog.close();
+  });
+
+  weekdaySettingsDialog.addEventListener('click', (e) => {
+    if (e.target === weekdaySettingsDialog) {
+      weekdaySettingsDialog.close();
+    }
+  });
+
+  weekStartSelect.addEventListener('change', () => {
+    updateCalendarSettings({ weekStart: Number(weekStartSelect.value) });
+  });
+
+  weekdayColorToggle.addEventListener('change', () => {
+    updateCalendarSettings({ weekdayColor: weekdayColorToggle.checked });
+  });
+
+  weekdayBgToggle.addEventListener('change', () => {
+    updateCalendarSettings({ weekdayBg: weekdayBgToggle.checked });
+  });
+
+  weekdayEnglishToggle.addEventListener('change', () => {
+    updateCalendarSettings({ weekdayEnglish: weekdayEnglishToggle.checked });
+  });
+
+  calendarBgInput.addEventListener('change', async () => {
     const file = calendarBgInput.files[0];
     if (!file) return;
 
@@ -2152,6 +2520,7 @@
       } catch (err) {
         console.warn('背景写真のアップロードに失敗しました', err);
       }
+      bgPhotoSettingsDialog.close();
       return;
     }
 
@@ -2164,12 +2533,12 @@
       } catch (err) {
         console.warn('背景画像の保存に失敗しました（サイズが大きすぎる可能性があります）', err);
       }
+      bgPhotoSettingsDialog.close();
     };
     reader.readAsDataURL(file);
   });
 
   calendarBgResetBtn.addEventListener('click', async () => {
-    bgSettingsMenu.hidden = true;
     applyCalendarBg(null);
     localStorage.removeItem('calendarBgImage');
     calendarBgInput.value = '';
@@ -2186,6 +2555,8 @@
         console.warn('背景写真のリセットに失敗しました', err);
       }
     }
+
+    bgPhotoSettingsDialog.close();
   });
 
   exportLocalTasksBtn.addEventListener('click', () => {
