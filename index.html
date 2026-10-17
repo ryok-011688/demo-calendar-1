@@ -1341,7 +1341,6 @@
   let tasks = [];
   let db = null;
   let tasksCollection = null;
-  let assetsApi = null;
   let settingsDocRef = null;
   let calendarSettingsDocRef = null;
   let calendarSettings = {
@@ -1439,6 +1438,74 @@
     }
   }
 
+  // Firebase設定（Firebase Console の「プロジェクトの設定」から取得したWebアプリ用の値）
+  // これらの値は公開しても問題ない識別子で、実際のアクセス制御はFirestoreのセキュリティルール側で行う。
+  const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyD-O9TSAvxpMcumWnZqFl4IvSuRSoYLURY",
+    authDomain: "fir-calendar-5b56c.firebaseapp.com",
+    projectId: "fir-calendar-5b56c",
+    storageBucket: "fir-calendar-5b56c.firebasestorage.app",
+    messagingSenderId: "855017489671",
+    appId: "1:855017489671:web:8697f90d8d397a4c4df1a2"
+  };
+  const FIREBASE_SDK_VERSION = "10.12.2";
+
+  // 既存コードは「db.collection(path)」「db.doc(path)」という単純な形のAPIを前提に書かれているため、
+  // Firestoreの実際の関数呼び出しをその形に合わせて薄くラップする。
+  function wrapFirestoreDoc(ref, firestoreFns) {
+    const { getDoc, setDoc, updateDoc, deleteDoc, onSnapshot } = firestoreFns;
+    return {
+      get: async () => {
+        const snap = await getDoc(ref);
+        return { exists: snap.exists(), data: () => snap.data() };
+      },
+      set: (data) => setDoc(ref, data),
+      update: (data) => updateDoc(ref, data),
+      delete: () => deleteDoc(ref),
+      onSnapshot: (next, onError) => onSnapshot(
+        ref,
+        (snap) => next({ exists: snap.exists(), data: () => snap.data() }),
+        onError
+      )
+    };
+  }
+
+  function wrapFirestoreCollection(ref, firestoreFns) {
+    const { doc, addDoc, onSnapshot } = firestoreFns;
+    return {
+      add: (data) => addDoc(ref, data),
+      doc: (id) => wrapFirestoreDoc(doc(ref, id), firestoreFns),
+      onSnapshot: (next, onError) => onSnapshot(
+        ref,
+        (snap) => next({ docs: snap.docs.map(d => ({ id: d.id, data: () => d.data() })) }),
+        onError
+      )
+    };
+  }
+
+  async function connectFirebase() {
+    try {
+      const { initializeApp } = await import(
+        `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`
+      );
+      const firestoreFns = await import(
+        `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`
+      );
+      const { getFirestore, collection, doc } = firestoreFns;
+
+      const firebaseApp = initializeApp(FIREBASE_CONFIG);
+      const firestoreDb = getFirestore(firebaseApp);
+
+      return {
+        collection: (path) => wrapFirestoreCollection(collection(firestoreDb, path), firestoreFns),
+        doc: (path) => wrapFirestoreDoc(doc(firestoreDb, path), firestoreFns)
+      };
+    } catch (err) {
+      console.warn('Firebaseへの接続に失敗しました。ローカル保存のみで動作します。', err);
+      return null;
+    }
+  }
+
   async function initStore() {
     // ローカルのキャッシュでまず即座に描画し、同期ストアが使えるかは後から確認する
     tasks = JSON.parse(localStorage.getItem('tasks')) || [];
@@ -1446,14 +1513,7 @@
     renderWeekdayRow();
     renderAll();
 
-    let resolvedDb = null;
-    try {
-      if (window.claude && typeof window.claude.use === 'function') {
-        resolvedDb = await window.claude.use('db');
-      }
-    } catch (err) {
-      resolvedDb = null;
-    }
+    const resolvedDb = await connectFirebase();
 
     if (resolvedDb) {
       db = resolvedDb;
@@ -1474,7 +1534,7 @@
           // ドキュメントが一度も存在しない場合は、端末ローカルの背景設定をそのまま残す
           if (snap.exists) {
             const data = snap.data();
-            applyCalendarBg(data.assetId ? '/_blob/' + data.assetId : null);
+            applyCalendarBg(data.dataUrl || null);
           }
         },
         (err) => {
@@ -1500,18 +1560,6 @@
           console.error('曜日設定の同期エラー:', err);
         }
       );
-    }
-
-    let resolvedAssets = null;
-    try {
-      if (window.claude && typeof window.claude.use === 'function') {
-        resolvedAssets = await window.claude.use('assets');
-      }
-    } catch (err) {
-      resolvedAssets = null;
-    }
-    if (resolvedAssets) {
-      assetsApi = resolvedAssets;
     }
   }
 
@@ -2508,34 +2556,87 @@
     updateCalendarSettings({ weekdayEnglish: weekdayEnglishToggle.checked });
   });
 
+  // FirestoreはドキュメントごとにDB側のサイズ上限がある（約1MB）。
+  // 元画像のサイズに関わらず、保存前にブラウザ側で自動的に縮小・圧縮してこの上限に収める。
+  const MAX_BG_IMAGE_BYTES = 900 * 1024;
+  const MAX_BG_IMAGE_DIMENSION = 1600;
+
+  function loadImageFromFile(file) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = (err) => {
+        URL.revokeObjectURL(url);
+        reject(err);
+      };
+      img.src = url;
+    });
+  }
+
+  async function compressImageToDataUrl(file, maxBytes, maxDimension) {
+    const img = await loadImageFromFile(file);
+
+    let width = img.naturalWidth;
+    let height = img.naturalHeight;
+    if (width > maxDimension || height > maxDimension) {
+      if (width >= height) {
+        height = Math.round(height * (maxDimension / width));
+        width = maxDimension;
+      } else {
+        width = Math.round(width * (maxDimension / height));
+        height = maxDimension;
+      }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+
+    // 画質を段階的に下げながら、Firestoreのサイズ上限に収まるまで圧縮する
+    let quality = 0.85;
+    let dataUrl = canvas.toDataURL('image/jpeg', quality);
+    while (dataUrl.length > maxBytes && quality > 0.3) {
+      quality -= 0.1;
+      dataUrl = canvas.toDataURL('image/jpeg', quality);
+    }
+    return dataUrl;
+  }
+
   calendarBgInput.addEventListener('change', async () => {
     const file = calendarBgInput.files[0];
     if (!file) return;
 
-    if (assetsApi && settingsDocRef) {
-      try {
-        const result = await assetsApi.upload(file);
-        applyCalendarBg(result.url);
-        await settingsDocRef.set({ assetId: result.id });
-      } catch (err) {
-        console.warn('背景写真のアップロードに失敗しました', err);
-      }
-      bgPhotoSettingsDialog.close();
+    let dataUrl;
+    try {
+      dataUrl = await compressImageToDataUrl(file, MAX_BG_IMAGE_BYTES, MAX_BG_IMAGE_DIMENSION);
+    } catch (err) {
+      console.warn('背景写真の読み込みに失敗しました', err);
+      alert('画像の読み込みに失敗しました。別の画像を試してください。');
+      calendarBgInput.value = '';
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      applyCalendarBg(dataUrl);
+    applyCalendarBg(dataUrl);
+
+    if (settingsDocRef) {
+      try {
+        await settingsDocRef.set({ dataUrl });
+      } catch (err) {
+        console.warn('背景写真の同期に失敗しました', err);
+      }
+    } else {
       try {
         localStorage.setItem('calendarBgImage', dataUrl);
       } catch (err) {
         console.warn('背景画像の保存に失敗しました（サイズが大きすぎる可能性があります）', err);
       }
-      bgPhotoSettingsDialog.close();
-    };
-    reader.readAsDataURL(file);
+    }
+    bgPhotoSettingsDialog.close();
   });
 
   calendarBgResetBtn.addEventListener('click', async () => {
@@ -2545,12 +2646,7 @@
 
     if (settingsDocRef) {
       try {
-        const snap = await settingsDocRef.get();
-        const assetId = snap.exists ? snap.data().assetId : null;
-        await settingsDocRef.set({ assetId: null });
-        if (assetsApi && assetId) {
-          await assetsApi.delete(assetId);
-        }
+        await settingsDocRef.set({ dataUrl: null });
       } catch (err) {
         console.warn('背景写真のリセットに失敗しました', err);
       }
