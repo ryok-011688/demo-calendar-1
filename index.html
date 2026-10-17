@@ -1338,6 +1338,25 @@
   </dialog>
 
 <script>
+  // URLの「?cal=」パラメータで指定された予定表を使う。指定がなければ、
+  // この端末・このブラウザで前回使った予定表（なければ既定の"main"）を使う。
+  // こうすることで、自分はいつも通り（パラメータなし＝main）のまま、
+  // 友人には ?cal=任意の名前 を付けたリンクを渡すだけで、別の独立した予定表を使ってもらえる。
+  function resolveCalendarId() {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = (params.get('cal') || '').trim();
+    if (fromUrl) {
+      localStorage.setItem('calendarId', fromUrl);
+      return fromUrl;
+    }
+    return localStorage.getItem('calendarId') || 'main';
+  }
+
+  const calendarId = resolveCalendarId();
+  const LOCAL_TASKS_KEY = 'tasks:' + calendarId;
+  const LOCAL_BG_KEY = 'calendarBgImage:' + calendarId;
+  const LOCAL_SETTINGS_KEY = 'calendarSettings:' + calendarId;
+
   let tasks = [];
   let db = null;
   let tasksCollection = null;
@@ -1402,7 +1421,7 @@
   }
 
   function persistLocal() {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
+    localStorage.setItem(LOCAL_TASKS_KEY, JSON.stringify(tasks));
   }
 
   async function createTask(data) {
@@ -1508,7 +1527,7 @@
 
   async function initStore() {
     // ローカルのキャッシュでまず即座に描画し、同期ストアが使えるかは後から確認する
-    tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+    tasks = JSON.parse(localStorage.getItem(LOCAL_TASKS_KEY)) || [];
     applyCalendarSettingsToInputs();
     renderWeekdayRow();
     renderAll();
@@ -1517,7 +1536,7 @@
 
     if (resolvedDb) {
       db = resolvedDb;
-      tasksCollection = db.collection('tasks');
+      tasksCollection = db.collection('calendars/' + calendarId + '/tasks');
       tasksCollection.onSnapshot(
         (snap) => {
           tasks = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
@@ -1528,7 +1547,7 @@
         }
       );
 
-      settingsDocRef = db.doc('settings/calendarBg');
+      settingsDocRef = db.doc('calendars/' + calendarId + '/settings/calendarBg');
       settingsDocRef.onSnapshot(
         (snap) => {
           // ドキュメントが一度も存在しない場合は、端末ローカルの背景設定をそのまま残す
@@ -1542,7 +1561,7 @@
         }
       );
 
-      calendarSettingsDocRef = db.doc('settings/calendarDisplay');
+      calendarSettingsDocRef = db.doc('calendars/' + calendarId + '/settings/calendarDisplay');
       calendarSettingsDocRef.onSnapshot(
         (snap) => {
           // ドキュメントが一度も存在しない場合は、端末ローカルの設定をそのまま残す
@@ -1754,12 +1773,12 @@
     calendarBg.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : 'none';
   }
 
-  const savedCalendarBg = localStorage.getItem('calendarBgImage');
+  const savedCalendarBg = localStorage.getItem(LOCAL_BG_KEY);
   if (savedCalendarBg) {
     applyCalendarBg(savedCalendarBg);
   }
 
-  const savedCalendarSettings = localStorage.getItem('calendarSettings');
+  const savedCalendarSettings = localStorage.getItem(LOCAL_SETTINGS_KEY);
   if (savedCalendarSettings) {
     try {
       calendarSettings = Object.assign({}, calendarSettings, JSON.parse(savedCalendarSettings));
@@ -1892,7 +1911,7 @@
         console.warn('曜日設定の同期に失敗しました', err);
       }
     } else {
-      localStorage.setItem('calendarSettings', JSON.stringify(calendarSettings));
+      localStorage.setItem(LOCAL_SETTINGS_KEY, JSON.stringify(calendarSettings));
     }
   }
 
@@ -2631,7 +2650,7 @@
       }
     } else {
       try {
-        localStorage.setItem('calendarBgImage', dataUrl);
+        localStorage.setItem(LOCAL_BG_KEY, dataUrl);
       } catch (err) {
         console.warn('背景画像の保存に失敗しました（サイズが大きすぎる可能性があります）', err);
       }
@@ -2641,7 +2660,7 @@
 
   calendarBgResetBtn.addEventListener('click', async () => {
     applyCalendarBg(null);
-    localStorage.removeItem('calendarBgImage');
+    localStorage.removeItem(LOCAL_BG_KEY);
     calendarBgInput.value = '';
 
     if (settingsDocRef) {
@@ -2656,7 +2675,7 @@
   });
 
   exportLocalTasksBtn.addEventListener('click', () => {
-    const raw = localStorage.getItem('tasks');
+    const raw = localStorage.getItem(LOCAL_TASKS_KEY);
     const localTasks = raw ? JSON.parse(raw) : [];
     if (localTasks.length === 0) {
       alert('この端末のブラウザにはローカル保存されたタスクがありません。');
