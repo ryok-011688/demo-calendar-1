@@ -108,6 +108,29 @@
     cursor: pointer;
   }
 
+  .read-other-calendar-result {
+    margin-top: 16px;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .read-other-calendar-result .result-task {
+    padding: 8px 0;
+    border-bottom: 1px solid #3d3a35;
+    font-size: 0.9rem;
+  }
+
+  .read-other-calendar-result .result-task:last-child {
+    border-bottom: none;
+  }
+
+  .read-other-calendar-result .result-empty,
+  .read-other-calendar-result .result-error {
+    color: #a89d8c;
+    font-size: 0.9rem;
+    padding: 8px 0;
+  }
+
   .calendar-panel {
     flex: 6;
     min-width: 0;
@@ -184,6 +207,10 @@
     padding: 4px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     z-index: 10;
+  }
+
+  .bg-settings-menu[hidden] {
+    display: none;
   }
 
   .bg-settings-menu-item {
@@ -775,6 +802,10 @@
     gap: 4px;
   }
 
+  .field-group[hidden] {
+    display: none;
+  }
+
   .field-group-wide {
     width: 100%;
     margin-bottom: 14px;
@@ -1096,6 +1127,11 @@
     background: var(--danger);
   }
 
+  .edit-btn .btn-icon,
+  .delete-btn .btn-icon {
+    display: none;
+  }
+
   .task-detail {
     margin: 0;
     margin-left: 76px;
@@ -1165,6 +1201,31 @@
       max-height: 55vh;
     }
 
+    .edit-btn,
+    .delete-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .edit-btn .btn-text,
+    .delete-btn .btn-text {
+      display: none;
+    }
+
+    .edit-btn .btn-icon,
+    .delete-btn .btn-icon {
+      display: inline;
+      font-size: 1.2rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
     .input-row {
       align-items: stretch;
     }
@@ -1229,7 +1290,13 @@
                 <button type="button" class="bg-settings-menu-item" id="weekday-settings-btn">曜日設定</button>
               </div>
             </div>
-            <button type="button" class="bg-reset-btn" id="export-local-tasks-btn">エクスポート</button>
+            <div class="bg-settings">
+              <button type="button" class="bg-reset-btn" id="export-menu-btn">エクスポート</button>
+              <div class="bg-settings-menu" id="export-menu" hidden>
+                <button type="button" class="bg-settings-menu-item" id="export-local-tasks-btn">ローカルタスクをエクスポート</button>
+                <button type="button" class="bg-settings-menu-item" id="open-read-other-calendar-btn">他のカレンダー情報を読み取る</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1244,6 +1311,19 @@
     <div class="dialog-actions">
       <button type="button" id="bg-photo-settings-close-btn" class="edit-save-btn">閉じる</button>
     </div>
+  </dialog>
+
+  <dialog id="read-other-calendar-dialog" class="add-task-dialog">
+    <h2 class="panel-title">🔎 他のカレンダー情報を読み取る</h2>
+    <div class="field-group field-group-wide">
+      <label class="field-label" for="read-other-calendar-id-input">予定表のID</label>
+      <input type="text" id="read-other-calendar-id-input" placeholder="例: kentas">
+    </div>
+    <div class="dialog-actions">
+      <button type="button" id="read-other-calendar-close-btn" class="edit-cancel-btn">閉じる</button>
+      <button type="button" id="read-other-calendar-fetch-btn" class="edit-save-btn">読み込む</button>
+    </div>
+    <div id="read-other-calendar-result" class="read-other-calendar-result"></div>
   </dialog>
 
   <dialog id="weekday-settings-dialog" class="add-task-dialog">
@@ -1398,6 +1478,14 @@
   const calendarBgInput = document.getElementById('calendar-bg-input');
   const calendarBgResetBtn = document.getElementById('calendar-bg-reset-btn');
   const exportLocalTasksBtn = document.getElementById('export-local-tasks-btn');
+  const exportMenuBtn = document.getElementById('export-menu-btn');
+  const exportMenu = document.getElementById('export-menu');
+  const openReadOtherCalendarBtn = document.getElementById('open-read-other-calendar-btn');
+  const readOtherCalendarDialog = document.getElementById('read-other-calendar-dialog');
+  const readOtherCalendarCloseBtn = document.getElementById('read-other-calendar-close-btn');
+  const readOtherCalendarFetchBtn = document.getElementById('read-other-calendar-fetch-btn');
+  const readOtherCalendarIdInput = document.getElementById('read-other-calendar-id-input');
+  const readOtherCalendarResult = document.getElementById('read-other-calendar-result');
   const bgSettingsBtn = document.getElementById('bg-settings-btn');
   const bgSettingsMenu = document.getElementById('bg-settings-menu');
   const openBgPhotoDialogBtn = document.getElementById('open-bg-photo-dialog-btn');
@@ -1490,10 +1578,14 @@
   }
 
   function wrapFirestoreCollection(ref, firestoreFns) {
-    const { doc, addDoc, onSnapshot } = firestoreFns;
+    const { doc, addDoc, getDocs, onSnapshot } = firestoreFns;
     return {
       add: (data) => addDoc(ref, data),
       doc: (id) => wrapFirestoreDoc(doc(ref, id), firestoreFns),
+      get: async () => {
+        const snap = await getDocs(ref);
+        return { docs: snap.docs.map(d => ({ id: d.id, data: () => d.data() })) };
+      },
       onSnapshot: (next, onError) => onSnapshot(
         ref,
         (snap) => next({ docs: snap.docs.map(d => ({ id: d.id, data: () => d.data() })) }),
@@ -2141,7 +2233,8 @@
       if (editingTaskId !== task.id) {
         const editBtn = document.createElement('button');
         editBtn.className = 'edit-btn';
-        editBtn.textContent = '✏️ 編集';
+        editBtn.title = '編集';
+        editBtn.innerHTML = '<span class="btn-text">✏️ 編集</span><span class="btn-icon">✓</span>';
         editBtn.addEventListener('click', () => {
           editingTaskId = task.id;
           renderTasks();
@@ -2150,7 +2243,8 @@
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'delete-btn';
-        deleteBtn.textContent = '🗑 削除';
+        deleteBtn.title = '削除';
+        deleteBtn.innerHTML = '<span class="btn-text">🗑 削除</span><span class="btn-icon">×</span>';
         row.appendChild(deleteBtn);
       }
 
@@ -2519,12 +2613,77 @@
 
   bgSettingsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    exportMenu.hidden = true;
     bgSettingsMenu.hidden = !bgSettingsMenu.hidden;
+  });
+
+  exportMenuBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    bgSettingsMenu.hidden = true;
+    exportMenu.hidden = !exportMenu.hidden;
   });
 
   document.addEventListener('click', (e) => {
     if (!bgSettingsMenu.hidden && !bgSettingsMenu.contains(e.target) && e.target !== bgSettingsBtn) {
       bgSettingsMenu.hidden = true;
+    }
+    if (!exportMenu.hidden && !exportMenu.contains(e.target) && e.target !== exportMenuBtn) {
+      exportMenu.hidden = true;
+    }
+  });
+
+  openReadOtherCalendarBtn.addEventListener('click', () => {
+    exportMenu.hidden = true;
+    readOtherCalendarIdInput.value = '';
+    readOtherCalendarResult.innerHTML = '';
+    readOtherCalendarDialog.showModal();
+  });
+
+  readOtherCalendarCloseBtn.addEventListener('click', () => {
+    readOtherCalendarDialog.close();
+  });
+
+  readOtherCalendarDialog.addEventListener('click', (e) => {
+    if (e.target === readOtherCalendarDialog) {
+      readOtherCalendarDialog.close();
+    }
+  });
+
+  readOtherCalendarFetchBtn.addEventListener('click', async () => {
+    const otherId = readOtherCalendarIdInput.value.trim();
+
+    if (!otherId) {
+      readOtherCalendarResult.innerHTML = '<p class="result-error">予定表のIDを入力してください。</p>';
+      return;
+    }
+    if (!db) {
+      readOtherCalendarResult.innerHTML = '<p class="result-error">インターネットに接続されていないため読み取れません。</p>';
+      return;
+    }
+
+    readOtherCalendarResult.innerHTML = '<p class="result-empty">読み込み中...</p>';
+    try {
+      const otherTasksCollection = db.collection('calendars/' + otherId + '/tasks');
+      const snap = await otherTasksCollection.get();
+      const otherTasks = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+
+      if (otherTasks.length === 0) {
+        readOtherCalendarResult.innerHTML =
+          '<p class="result-empty">「' + otherId + '」という予定表にはタスクが見つかりませんでした。</p>';
+        return;
+      }
+
+      readOtherCalendarResult.innerHTML = '';
+      otherTasks.forEach(t => {
+        const row = document.createElement('div');
+        row.className = 'result-task';
+        const dateLabel = t.date ? (t.time ? `${t.date} ${t.time}` : t.date) : '日付未設定';
+        row.textContent = `${dateLabel}　${t.text}`;
+        readOtherCalendarResult.appendChild(row);
+      });
+    } catch (err) {
+      console.warn('他のカレンダーの読み込みに失敗しました', err);
+      readOtherCalendarResult.innerHTML = '<p class="result-error">読み込みに失敗しました。IDを確認してください。</p>';
     }
   });
 
