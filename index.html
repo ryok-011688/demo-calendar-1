@@ -15,6 +15,8 @@
     --accent-hover: #8aa4ff;
     --danger: #ff6b6b;
     --danger-hover: #ff8787;
+    --header-color: #6c8cff;
+    --header-text-color: #ffffff;
   }
 
   * {
@@ -149,10 +151,18 @@
     z-index: 0;
   }
 
+  /* PC幅では写真を隙間なく敷き詰める（スマホ幅では上のcontain指定のまま、写真全体を表示） */
+  @media (min-width: 821px) {
+    .calendar-bg {
+      background-size: cover;
+    }
+  }
+
   .calendar-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(240, 240, 242, 0.7);
+    background: color-mix(in srgb, var(--header-color) 25%, #f0f0f2 75%);
+    opacity: 0.7;
     z-index: 1;
   }
 
@@ -232,17 +242,17 @@
   }
 
   .calendar-panel .calendar-header h2 {
-    color: #fff;
+    color: var(--header-text-color);
   }
 
   .calendar-panel .month-nav-btn {
-    background: rgba(255, 255, 255, 0.2);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.4);
+    background: color-mix(in srgb, var(--header-text-color) 20%, transparent);
+    color: var(--header-text-color);
+    border: 1px solid color-mix(in srgb, var(--header-text-color) 40%, transparent);
   }
 
   .calendar-panel .month-nav-btn:hover {
-    background: rgba(255, 255, 255, 0.32);
+    background: color-mix(in srgb, var(--header-text-color) 32%, transparent);
   }
 
   .calendar-panel .weekday {
@@ -320,7 +330,8 @@
   .add-task-dialog #task-date-input,
   .add-task-dialog #task-time-input,
   .add-task-dialog #task-detail-input,
-  .add-task-dialog #task-color-input {
+  .add-task-dialog #task-color-input,
+  .add-task-dialog #header-color-input {
     background: #221f1d;
     border-color: #3d3a35;
     color: #e6ded1;
@@ -502,7 +513,7 @@
     margin-bottom: 16px;
     padding: 12px 16px;
     border-radius: 10px;
-    background: var(--accent);
+    background: var(--header-color);
   }
 
   .calendar-header h2 {
@@ -921,7 +932,8 @@
     outline: none;
   }
 
-  #task-color-input {
+  #task-color-input,
+  #header-color-input {
     width: 44px;
     height: 44px;
     padding: 2px;
@@ -1351,6 +1363,10 @@
       <input type="checkbox" id="weekday-english-toggle">
       曜日を英語表記にする（Sun, Mon, ...）
     </label>
+    <div class="field-group field-group-wide">
+      <label class="field-label" for="header-color-input">🎨 ヘッダー・写真の色合い</label>
+      <input type="color" id="header-color-input" value="#6c8cff" title="ヘッダーの色">
+    </div>
     <div class="dialog-actions">
       <button type="button" id="weekday-settings-close-btn" class="edit-save-btn">閉じる</button>
     </div>
@@ -1446,12 +1462,14 @@
   let tasksCollection = null;
   let settingsDocRef = null;
   let calendarSettingsDocRef = null;
-  let calendarSettings = {
+  const DEFAULT_CALENDAR_SETTINGS = {
     weekStart: 0,
     weekdayColor: false,
     weekdayBg: false,
-    weekdayEnglish: false
+    weekdayEnglish: false,
+    headerColor: '#6c8cff'
   };
+  let calendarSettings = Object.assign({}, DEFAULT_CALENDAR_SETTINGS);
 
   const today = new Date();
   let viewYear = today.getFullYear();
@@ -1503,6 +1521,7 @@
   const weekdayColorToggle = document.getElementById('weekday-color-toggle');
   const weekdayBgToggle = document.getElementById('weekday-bg-toggle');
   const weekdayEnglishToggle = document.getElementById('weekday-english-toggle');
+  const headerColorInput = document.getElementById('header-color-input');
   const addTaskDialog = document.getElementById('add-task-dialog');
   const addDialogCancelBtn = document.getElementById('add-dialog-cancel-btn');
   const openAddDialogBtn = document.getElementById('open-add-dialog-btn');
@@ -1625,6 +1644,7 @@
     // ローカルのキャッシュでまず即座に描画し、同期ストアが使えるかは後から確認する
     tasks = JSON.parse(localStorage.getItem(LOCAL_TASKS_KEY)) || [];
     applyCalendarSettingsToInputs();
+    applyHeaderColor();
     renderWeekdayRow();
     renderAll();
 
@@ -1663,10 +1683,12 @@
           // ドキュメントが一度も存在しない場合は、端末ローカルの設定をそのまま残す
           if (snap.exists) {
             calendarSettings = Object.assign(
-              { weekStart: 0, weekdayColor: false, weekdayBg: false, weekdayEnglish: false },
+              {},
+              DEFAULT_CALENDAR_SETTINGS,
               snap.data()
             );
             applyCalendarSettingsToInputs();
+            applyHeaderColor();
             renderWeekdayRow();
             renderCalendar();
           }
@@ -1891,6 +1913,13 @@
     weekdayColorToggle.checked = calendarSettings.weekdayColor;
     weekdayBgToggle.checked = calendarSettings.weekdayBg;
     weekdayEnglishToggle.checked = calendarSettings.weekdayEnglish;
+    headerColorInput.value = calendarSettings.headerColor;
+  }
+
+  function applyHeaderColor() {
+    const root = document.documentElement.style;
+    root.setProperty('--header-color', calendarSettings.headerColor);
+    root.setProperty('--header-text-color', getContrastTextColor(calendarSettings.headerColor));
   }
 
   function renderWeekdayRow() {
@@ -1997,6 +2026,7 @@
   async function updateCalendarSettings(patch) {
     calendarSettings = Object.assign({}, calendarSettings, patch);
     applyCalendarSettingsToInputs();
+    applyHeaderColor();
     renderWeekdayRow();
     renderCalendar();
 
@@ -2736,6 +2766,10 @@
 
   weekdayEnglishToggle.addEventListener('change', () => {
     updateCalendarSettings({ weekdayEnglish: weekdayEnglishToggle.checked });
+  });
+
+  headerColorInput.addEventListener('change', () => {
+    updateCalendarSettings({ headerColor: headerColorInput.value });
   });
 
   // FirestoreはドキュメントごとにDB側のサイズ上限がある（約1MB）。
