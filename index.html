@@ -982,7 +982,9 @@
     gap: 4px;
     padding: 12px 4px;
     border-bottom: 1px solid var(--border);
-    touch-action: pan-y;
+    /* ブラウザ標準のスクロールに任せると、長押し中の微妙な指のブレで
+       スクロールが横取りされてしまうため無効化し、スクロールもJS側で手動管理する */
+    touch-action: none;
     -webkit-touch-callout: none;
     -webkit-user-select: none;
     user-select: none;
@@ -2580,6 +2582,8 @@
     const startX = e.clientX;
     const startY = e.clientY;
     const pointerId = e.pointerId;
+    let lastY = startY;
+    let isScrolling = false;
 
     clearTouchPressTimer();
     touchPressTimer = setTimeout(() => {
@@ -2593,9 +2597,18 @@
       if (!touchDragActive) {
         const dx = moveEvent.clientX - startX;
         const dy = moveEvent.clientY - startY;
-        if (Math.hypot(dx, dy) > LONG_PRESS_MOVE_TOLERANCE) {
+        if (!isScrolling && Math.hypot(dx, dy) > LONG_PRESS_MOVE_TOLERANCE) {
+          // 長押しが成立する前に指が動いた＝スクロールしたいという意思とみなす。
+          // touch-action: none にしてあるため、ブラウザ標準のスクロールは発生しない。
+          // ここから先はJSでリストのスクロールを手動で肩代わりする。
           clearTouchPressTimer();
+          isScrolling = true;
         }
+        if (isScrolling) {
+          moveEvent.preventDefault();
+          taskList.scrollTop -= (moveEvent.clientY - lastY);
+        }
+        lastY = moveEvent.clientY;
         return;
       }
 
