@@ -803,19 +803,21 @@
 
   .add-task-btn {
     flex-shrink: 0;
-    /* 枠よりあえて大きくし、下端は枠の下端に揃えて、上側だけ枠からはみ出させる */
+    /* 枠よりあえて大きくし、下端は枠の下端に揃え、上と右側は枠からはみ出させて目立たせる */
     align-self: flex-end;
     margin-bottom: -4px;
-    width: 32px;
-    height: 32px;
+    margin-right: -10px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     /* 枠（ヘッダー帯）と同じ色に合わせる */
     border: 1px solid var(--header-color);
     background: var(--header-color);
     color: var(--header-text-color);
-    font-size: 1.1rem;
+    font-size: 1.2rem;
     line-height: 1;
     cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
