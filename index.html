@@ -807,12 +807,17 @@
     align-self: flex-end;
     margin-bottom: -4px;
     margin-right: -10px;
-    width: 36px;
-    height: 36px;
+    width: calc(36px + 3pt);
+    height: calc(36px + 3pt);
     border-radius: 50%;
-    border: none;
+    /* 縁取りは左下部分のみ半透明で入れる（上と右は枠から出る側なのでつけない） */
+    border-style: solid;
+    border-width: 2px;
+    border-color: transparent transparent
+      color-mix(in srgb, var(--header-text-color) 50%, transparent)
+      color-mix(in srgb, var(--header-text-color) 50%, transparent);
     background: var(--header-color);
-    color: #1a1b1e;
+    color: var(--header-text-color);
     font-size: 1.2rem;
     line-height: 1;
     cursor: pointer;
