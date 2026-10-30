@@ -1371,6 +1371,7 @@
           <button type="button" class="bg-settings-menu-item" id="weekday-settings-btn">曜日設定</button>
           <button type="button" class="bg-settings-menu-item" id="export-local-tasks-btn">ローカルタスクをエクスポート</button>
           <button type="button" class="bg-settings-menu-item" id="open-read-other-calendar-btn">他のカレンダー情報を読み取る</button>
+          <button type="button" class="bg-settings-menu-item" id="open-google-calendar-btn">Googleカレンダーを読み込む</button>
         </div>
       </div>
     </div>
@@ -1425,6 +1426,21 @@
       <button type="button" id="read-other-calendar-fetch-btn" class="edit-save-btn">読み込む</button>
     </div>
     <div id="read-other-calendar-result" class="read-other-calendar-result"></div>
+  </dialog>
+
+  <dialog id="google-calendar-dialog" class="add-task-dialog">
+    <h2 class="panel-title">📅 Googleカレンダーを読み込む</h2>
+    <p class="list-hint">
+      ご自身のGoogleカレンダーの予定（今日から30日分）を閲覧専用で表示します。
+      このアプリには取り込まれず、保存もされません。
+    </p>
+    <div class="dialog-actions" style="justify-content: flex-start; margin-top: 12px;">
+      <button type="button" id="google-calendar-login-btn" class="edit-save-btn">Googleでログイン</button>
+    </div>
+    <div class="dialog-actions">
+      <button type="button" id="google-calendar-close-btn" class="edit-cancel-btn">閉じる</button>
+    </div>
+    <div id="google-calendar-result" class="read-other-calendar-result"></div>
   </dialog>
 
   <dialog id="weekday-settings-dialog" class="add-task-dialog">
@@ -1522,6 +1538,7 @@
     </div>
   </dialog>
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   // URLの「?cal=」パラメータで指定された予定表を使う。指定がなければ、
   // この端末・このブラウザで前回使った予定表（なければ既定の"main"）を使う。
@@ -1591,6 +1608,11 @@
   const readOtherCalendarFetchBtn = document.getElementById('read-other-calendar-fetch-btn');
   const readOtherCalendarIdInput = document.getElementById('read-other-calendar-id-input');
   const readOtherCalendarResult = document.getElementById('read-other-calendar-result');
+  const openGoogleCalendarBtn = document.getElementById('open-google-calendar-btn');
+  const googleCalendarDialog = document.getElementById('google-calendar-dialog');
+  const googleCalendarCloseBtn = document.getElementById('google-calendar-close-btn');
+  const googleCalendarLoginBtn = document.getElementById('google-calendar-login-btn');
+  const googleCalendarResult = document.getElementById('google-calendar-result');
   const headerSettingsBtn = document.getElementById('header-settings-btn');
   const headerSettingsMenu = document.getElementById('header-settings-menu');
   const openBgPhotoDialogBtn = document.getElementById('open-bg-photo-dialog-btn');
@@ -2816,6 +2838,126 @@
     } catch (err) {
       console.warn('他のカレンダーの読み込みに失敗しました', err);
       readOtherCalendarResult.innerHTML = '<p class="result-error">読み込みに失敗しました。IDを確認してください。</p>';
+    }
+  });
+
+  // --- Googleカレンダー連携（閲覧専用。取得した予定はこのアプリには保存しない） ---
+  const GOOGLE_CLIENT_ID = '855017489671-s1ktsh5aq5c58fdkd27gl56ubksm71d6.apps.googleusercontent.com';
+  const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
+  let googleTokenClient = null;
+
+  function getGoogleTokenClient() {
+    if (googleTokenClient) return googleTokenClient;
+    if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
+      return null;
+    }
+    googleTokenClient = window.google.accounts.oauth2.initTokenClient({
+      client_id: GOOGLE_CLIENT_ID,
+      scope: GOOGLE_CALENDAR_SCOPE,
+      callback: '' // 呼び出し側でその都度上書きする
+    });
+    return googleTokenClient;
+  }
+
+  function requestGoogleAccessToken() {
+    return new Promise((resolve, reject) => {
+      const client = getGoogleTokenClient();
+      if (!client) {
+        reject(new Error('Googleログイン機能の読み込みに失敗しました。通信環境を確認してください。'));
+        return;
+      }
+      client.callback = (response) => {
+        if (response && response.access_token) {
+          resolve(response.access_token);
+        } else {
+          reject(new Error('ログインが完了しませんでした。'));
+        }
+      };
+      client.requestAccessToken();
+    });
+  }
+
+  async function fetchGoogleCalendarEvents(accessToken) {
+    const timeMin = new Date();
+    const timeMax = new Date();
+    timeMax.setDate(timeMax.getDate() + 30);
+
+    const params = new URLSearchParams({
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      maxResults: '50'
+    });
+
+    const res = await fetch(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events?' + params.toString(),
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+
+    if (!res.ok) {
+      throw new Error('Google Calendar APIの呼び出しに失敗しました（status: ' + res.status + '）');
+    }
+
+    const data = await res.json();
+    return data.items || [];
+  }
+
+  function formatGoogleEventWhen(event) {
+    if (event.start && event.start.date) {
+      // 終日予定
+      return event.start.date;
+    }
+    if (event.start && event.start.dateTime) {
+      const d = new Date(event.start.dateTime);
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return `${d.getFullYear()}-${mm}-${dd} ${hh}:${mi}`;
+    }
+    return '日時未設定';
+  }
+
+  googleCalendarLoginBtn.addEventListener('click', async () => {
+    googleCalendarResult.innerHTML = '<p class="result-empty">Googleへのログイン画面を確認してください...</p>';
+    try {
+      const accessToken = await requestGoogleAccessToken();
+      googleCalendarResult.innerHTML = '<p class="result-empty">読み込み中...</p>';
+      const events = await fetchGoogleCalendarEvents(accessToken);
+
+      if (events.length === 0) {
+        googleCalendarResult.innerHTML = '<p class="result-empty">今後30日間の予定は見つかりませんでした。</p>';
+        return;
+      }
+
+      googleCalendarResult.innerHTML = '';
+      events.forEach(event => {
+        const row = document.createElement('div');
+        row.className = 'result-task';
+        const when = formatGoogleEventWhen(event);
+        row.textContent = `${when}　${event.summary || '（タイトルなし）'}`;
+        googleCalendarResult.appendChild(row);
+      });
+    } catch (err) {
+      console.warn('Googleカレンダーの読み込みに失敗しました', err);
+      googleCalendarResult.innerHTML = '<p class="result-error">読み込みに失敗しました。ログインをキャンセルした場合や、通信環境によってはこのエラーが出ます。</p>';
+    }
+  });
+
+  openGoogleCalendarBtn.addEventListener('click', () => {
+    headerSettingsMenu.hidden = true;
+    googleCalendarResult.innerHTML = '';
+    googleCalendarDialog.showModal();
+  });
+
+  googleCalendarCloseBtn.addEventListener('click', () => {
+    googleCalendarDialog.close();
+  });
+
+  googleCalendarDialog.addEventListener('click', (e) => {
+    if (e.target === googleCalendarDialog) {
+      googleCalendarDialog.close();
     }
   });
 
