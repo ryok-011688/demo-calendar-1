@@ -803,8 +803,7 @@
 
   .add-task-btn {
     flex-shrink: 0;
-    /* 枠と地続きに見えるよう、下端を枠の下端に揃えて重ね、影や縁取りはつけない
-       （枠の右側がそのまま盛り上がってボタンになっている見た目にする） */
+    /* 下端を枠の下端に揃え、上と右側は枠からはみ出させる */
     align-self: flex-end;
     margin-bottom: -4px;
     margin-right: -10px;
@@ -817,6 +816,7 @@
     font-size: 1.2rem;
     line-height: 1;
     cursor: pointer;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
     display: flex;
     align-items: center;
     justify-content: center;
