@@ -320,11 +320,6 @@
     color: #e6ded1;
   }
 
-  .task-column .filter-label {
-    color: #e6ded1;
-    border-color: #3d3a35;
-  }
-
   .task-column .list-hint {
     color: #a89d8c;
   }
@@ -783,6 +778,9 @@
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--header-color);
   }
 
   .list-hint {
@@ -791,13 +789,9 @@
   }
 
   .filter-label {
-    display: inline-block;
     font-size: 1.2rem;
     font-weight: 700;
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 14px;
+    color: var(--header-text-color);
   }
 
   .add-task-btn {
@@ -805,9 +799,9 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: none;
-    background: var(--accent);
-    color: #fff;
+    border: 1px solid color-mix(in srgb, var(--header-text-color) 40%, transparent);
+    background: color-mix(in srgb, var(--header-text-color) 20%, transparent);
+    color: var(--header-text-color);
     font-size: 1.3rem;
     line-height: 1;
     cursor: pointer;
@@ -817,7 +811,7 @@
   }
 
   .add-task-btn:hover {
-    background: var(--accent-hover);
+    background: color-mix(in srgb, var(--header-text-color) 32%, transparent);
   }
 
   /* --- タスク入力 --- */
