@@ -803,13 +803,15 @@
 
   .add-task-btn {
     flex-shrink: 0;
-    width: 36px;
-    height: 36px;
+    /* 枠の薄さ(高さ24px・内側16px)に収まるサイズに */
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    border: 1px solid color-mix(in srgb, var(--header-text-color) 40%, transparent);
-    background: color-mix(in srgb, var(--header-text-color) 20%, transparent);
-    color: var(--header-text-color);
-    font-size: 1.3rem;
+    /* カレンダーの日付表記と同じ色に合わせる */
+    border: 1px solid #1a1b1e;
+    background: transparent;
+    color: #1a1b1e;
+    font-size: 0.65rem;
     line-height: 1;
     cursor: pointer;
     display: flex;
@@ -818,7 +820,7 @@
   }
 
   .add-task-btn:hover {
-    background: color-mix(in srgb, var(--header-text-color) 32%, transparent);
+    background: rgba(26, 27, 30, 0.15);
   }
 
   /* --- タスク入力 --- */
