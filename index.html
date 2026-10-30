@@ -61,9 +61,11 @@
 
   .header-settings {
     position: absolute;
-    right: 0;
+    /* ブラウザの端スワイプ操作などの判定領域と被らないよう、画面端から少し離す */
+    right: 4px;
     top: 50%;
     transform: translateY(-50%);
+    z-index: 21;
   }
 
   .header-settings-btn {
@@ -73,8 +75,8 @@
     border: 1px solid var(--border);
     background: #1e1f23;
     color: var(--text);
-    font-size: 1.1rem;
     cursor: pointer;
+    touch-action: manipulation;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1335,7 +1337,12 @@
     <div class="app-header">
       <h1>スケジューラー（Todo兼用）</h1>
       <div class="header-settings">
-        <button type="button" class="header-settings-btn" id="header-settings-btn" title="設定">⚙️</button>
+        <button type="button" class="header-settings-btn" id="header-settings-btn" title="設定" aria-label="設定">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
         <div class="header-settings-menu" id="header-settings-menu" hidden>
           <button type="button" class="bg-settings-menu-item" id="open-bg-photo-dialog-btn">背景設定</button>
           <button type="button" class="bg-settings-menu-item" id="weekday-settings-btn">曜日設定</button>
