@@ -786,7 +786,10 @@
        ボタンがはみ出す形で構わない） */
     height: 24px;
     padding: 4px 10px;
-    border-radius: 10px;
+    /* 右側を少し縮めてボタンの置き場所を作り、右の角丸はなくして
+       ＋ボタンの丸みだけで地続きに見えるようにする */
+    margin-right: 20px;
+    border-radius: 10px 0 0 10px;
     background: var(--header-color);
   }
 
@@ -803,10 +806,12 @@
 
   .add-task-btn {
     flex-shrink: 0;
-    /* 下端を枠の下端に揃え、上と右側は枠からはみ出させる */
+    /* 下端を枠の下端に揃え、上側は枠からはみ出させる。
+       右は枠を縮めた分（margin-right:20px）に食い込ませ、
+       ボタンの中心が枠の右端（角丸をなくした辺）に来るようにする */
     align-self: flex-end;
     margin-bottom: -4px;
-    margin-right: -10px;
+    margin-right: -30px;
     width: calc(36px + 3pt);
     height: calc(36px + 3pt);
     border-radius: 50%;
