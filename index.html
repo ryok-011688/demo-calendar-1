@@ -809,10 +809,10 @@
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    /* カレンダーの日付表記と同じ色に合わせる */
-    border: 1px solid #1a1b1e;
-    background: transparent;
-    color: #1a1b1e;
+    /* 枠（ヘッダー帯）と同じ色に合わせる */
+    border: 1px solid var(--header-color);
+    background: var(--header-color);
+    color: var(--header-text-color);
     font-size: 1.1rem;
     line-height: 1;
     cursor: pointer;
@@ -822,7 +822,7 @@
   }
 
   .add-task-btn:hover {
-    background: rgba(26, 27, 30, 0.15);
+    background: color-mix(in srgb, var(--header-color) 80%, black 20%);
   }
 
   /* --- タスク入力 --- */
