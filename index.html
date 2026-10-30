@@ -810,9 +810,9 @@
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    /* 外側の輪郭には何もつけず枠と地続きに見せ、縁取りは内側(inset)だけに入れる */
+    /* 枠からはみ出す上側には縁取りをつけず、枠の内側に重なる下側だけ半透明の縁取りを入れる */
     border: none;
-    box-shadow: inset 0 0 0 2px var(--header-text-color);
+    border-bottom: 2px solid color-mix(in srgb, var(--header-text-color) 50%, transparent);
     background: var(--header-color);
     color: var(--header-text-color);
     font-size: 1.2rem;
