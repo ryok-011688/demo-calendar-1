@@ -299,6 +299,8 @@
   .list-panel {
     flex: 1;
     min-height: 0;
+    /* Todo部分の見出しを上端ギリギリまで詰める */
+    padding-top: 12px;
   }
 
   .panel-title {
@@ -320,6 +322,7 @@
 
   .task-column .filter-label {
     color: #e6ded1;
+    border-color: #3d3a35;
   }
 
   .task-column .list-hint {
@@ -788,9 +791,13 @@
   }
 
   .filter-label {
+    display: inline-block;
     font-size: 1.2rem;
     font-weight: 700;
     color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 14px;
   }
 
   .add-task-btn {
@@ -1214,6 +1221,10 @@
 
     .panel {
       padding: 16px;
+    }
+
+    .list-panel {
+      padding-top: 8px;
     }
 
     /* カレンダー：Todoリスト = 7:3 の比率で画面の縦スペースを分け合う */
