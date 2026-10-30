@@ -785,7 +785,8 @@
     /* 枠の薄さはheightで固定する（＋ボタンが大きくても枠自体は広がらず、
        ボタンがはみ出す形で構わない） */
     height: 24px;
-    padding: 4px 10px;
+    /* 文字が大きくなった分、上下の余白を詰めて帯の高さ(24px)は変えない */
+    padding: 0 10px;
     /* 右側を少し縮めてボタンの置き場所を作り、右の角丸はなくして
        ＋ボタンの丸みだけで地続きに見えるようにする */
     margin-right: 20px;
@@ -799,7 +800,7 @@
   }
 
   .filter-label {
-    font-size: calc(1.2rem - 5pt);
+    font-size: calc(1.2rem - 2pt);
     font-weight: 700;
     color: var(--header-text-color);
   }
