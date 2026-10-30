@@ -1214,17 +1214,27 @@
       padding: 16px;
     }
 
-    /* カレンダー：Todoリスト = 8:2 の比率で画面の縦スペースを分け合う */
+    /* カレンダー：Todoリスト = 7:3 の比率で画面の縦スペースを分け合う */
     .calendar-panel {
-      flex: 8;
+      flex: 7;
       width: 100%;
       min-height: 0;
     }
 
     .task-column {
-      flex: 2;
+      flex: 3;
       width: 100%;
       min-height: 0;
+    }
+
+    /* Todo側の見出し・下部ボタン類の余白を詰め、タスク一覧の表示領域を確保する */
+    .filter-row {
+      margin-bottom: 8px;
+    }
+
+    .list-toolbar {
+      margin-top: 8px;
+      padding-top: 8px;
     }
 
     .calendar-header {
