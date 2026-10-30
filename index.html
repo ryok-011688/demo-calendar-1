@@ -1196,7 +1196,8 @@
 
     .app {
       width: 100%;
-      height: auto;
+      /* 画面の高さいっぱいまで使い、下でカレンダー8:Todo2の比率に配分する */
+      height: 100%;
     }
 
     h1 {
@@ -1206,21 +1207,24 @@
 
     .layout {
       flex-direction: column;
-      height: auto;
+      /* height: auto を外し、親(.app)の高さいっぱいに flex:1 で広がるようにする */
     }
 
     .panel {
       padding: 16px;
     }
 
-    .calendar-panel,
-    .task-column {
-      flex: none;
+    /* カレンダー：Todoリスト = 8:2 の比率で画面の縦スペースを分け合う */
+    .calendar-panel {
+      flex: 8;
       width: 100%;
+      min-height: 0;
     }
 
-    .calendar-content {
-      flex: none;
+    .task-column {
+      flex: 2;
+      width: 100%;
+      min-height: 0;
     }
 
     .calendar-header {
@@ -1242,9 +1246,7 @@
     }
 
     .calendar-grid {
-      flex: none;
       gap: 4px;
-      grid-auto-rows: minmax(74px, auto);
     }
 
     .day-cell {
@@ -1268,13 +1270,12 @@
       padding: 1px 4px;
     }
 
-    .list-panel {
-      flex: none;
+    .list-hint {
+      display: none;
     }
 
     #task-list {
-      flex: none;
-      max-height: 42vh;
+      min-height: 0;
     }
 
     .edit-btn,
