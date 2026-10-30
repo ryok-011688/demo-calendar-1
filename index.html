@@ -803,15 +803,17 @@
 
   .add-task-btn {
     flex-shrink: 0;
-    /* 枠の薄さ(高さ24px・内側16px)に収まるサイズに */
-    width: 16px;
-    height: 16px;
+    /* 枠よりあえて大きくし、下端は枠の下端に揃えて、上側だけ枠からはみ出させる */
+    align-self: flex-end;
+    margin-bottom: -4px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     /* カレンダーの日付表記と同じ色に合わせる */
     border: 1px solid #1a1b1e;
     background: transparent;
     color: #1a1b1e;
-    font-size: 0.65rem;
+    font-size: 1.1rem;
     line-height: 1;
     cursor: pointer;
     display: flex;
