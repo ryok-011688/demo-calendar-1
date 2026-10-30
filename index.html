@@ -46,9 +46,61 @@
   }
 
   h1 {
-    margin: 0 0 20px;
+    margin: 0;
     font-size: 1.8rem;
     text-align: center;
+  }
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .header-settings {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .header-settings-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: #1e1f23;
+    color: var(--text);
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .header-settings-btn:hover {
+    background: var(--border);
+  }
+
+  .header-settings-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 220px;
+    background: #1e1f23;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 20;
+  }
+
+  .header-settings-menu[hidden] {
+    display: none;
   }
 
   .layout {
@@ -173,55 +225,6 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
-  }
-
-  .list-toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    margin-top: 16px;
-    padding-top: 16px;
-    border-top: 1px solid var(--border);
-  }
-
-  .bg-upload-label,
-  .bg-reset-btn {
-    font-size: 0.85rem;
-    padding: 6px 12px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: #1e1f23;
-    color: var(--text);
-    cursor: pointer;
-  }
-
-  .bg-upload-label:hover,
-  .bg-reset-btn:hover {
-    background: var(--border);
-  }
-
-  .bg-settings {
-    position: relative;
-  }
-
-  .bg-settings-menu {
-    position: absolute;
-    bottom: calc(100% + 6px);
-    left: 0;
-    display: flex;
-    flex-direction: column;
-    min-width: 160px;
-    background: #1e1f23;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 4px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    z-index: 10;
-  }
-
-  .bg-settings-menu[hidden] {
-    display: none;
   }
 
   .bg-settings-menu-item {
@@ -476,32 +479,16 @@
     color: #a89d8c;
   }
 
-  .task-column .list-toolbar {
-    border-top-color: #3d3a35;
-  }
-
-  .task-column .bg-upload-label,
-  .task-column .bg-reset-btn {
-    border-color: #3d3a35;
-    background: #221f1d;
-    color: #e6ded1;
-  }
-
-  .task-column .bg-upload-label:hover,
-  .task-column .bg-reset-btn:hover {
-    background: #3d3a35;
-  }
-
-  .task-column .bg-settings-menu {
+  .header-settings-menu {
     background: #221f1d;
     border-color: #3d3a35;
   }
 
-  .task-column .bg-settings-menu-item {
+  .header-settings-menu .bg-settings-menu-item {
     color: #e6ded1;
   }
 
-  .task-column .bg-settings-menu-item:hover {
+  .header-settings-menu .bg-settings-menu-item:hover {
     background: #3d3a35;
   }
 
@@ -1206,6 +1193,9 @@
 
     h1 {
       font-size: 1.25rem;
+    }
+
+    .app-header {
       margin-bottom: 12px;
     }
 
@@ -1231,14 +1221,9 @@
       min-height: 0;
     }
 
-    /* Todo側の見出し・下部ボタン類の余白を詰め、タスク一覧の表示領域を確保する */
+    /* Todo側の見出しの余白を詰め、タスク一覧の表示領域を確保する */
     .filter-row {
       margin-bottom: 8px;
-    }
-
-    .list-toolbar {
-      margin-top: 8px;
-      padding-top: 8px;
     }
 
     .calendar-header {
@@ -1347,7 +1332,18 @@
 </head>
 <body>
   <div class="app">
-    <h1>スケジューラー（Todo兼用）</h1>
+    <div class="app-header">
+      <h1>スケジューラー（Todo兼用）</h1>
+      <div class="header-settings">
+        <button type="button" class="header-settings-btn" id="header-settings-btn" title="設定">⚙️</button>
+        <div class="header-settings-menu" id="header-settings-menu" hidden>
+          <button type="button" class="bg-settings-menu-item" id="open-bg-photo-dialog-btn">背景設定</button>
+          <button type="button" class="bg-settings-menu-item" id="weekday-settings-btn">曜日設定</button>
+          <button type="button" class="bg-settings-menu-item" id="export-local-tasks-btn">ローカルタスクをエクスポート</button>
+          <button type="button" class="bg-settings-menu-item" id="open-read-other-calendar-btn">他のカレンダー情報を読み取る</button>
+        </div>
+      </div>
+    </div>
     <div class="layout">
       <div class="panel calendar-panel">
         <div class="calendar-bg" id="calendar-bg"></div>
@@ -1373,22 +1369,6 @@
             <span class="list-hint">📅 カレンダーの日付をクリックするとその日のタスクが表示されます／✏️ タスクをダブルクリック、または編集ボタンで内容を変更できます</span>
           </div>
           <ul id="task-list"></ul>
-          <div class="list-toolbar">
-            <div class="bg-settings">
-              <button type="button" class="bg-reset-btn" id="bg-settings-btn">カレンダー設定</button>
-              <div class="bg-settings-menu" id="bg-settings-menu" hidden>
-                <button type="button" class="bg-settings-menu-item" id="open-bg-photo-dialog-btn">背景設定</button>
-                <button type="button" class="bg-settings-menu-item" id="weekday-settings-btn">曜日設定</button>
-              </div>
-            </div>
-            <div class="bg-settings">
-              <button type="button" class="bg-reset-btn" id="export-menu-btn">エクスポート</button>
-              <div class="bg-settings-menu" id="export-menu" hidden>
-                <button type="button" class="bg-settings-menu-item" id="export-local-tasks-btn">ローカルタスクをエクスポート</button>
-                <button type="button" class="bg-settings-menu-item" id="open-read-other-calendar-btn">他のカレンダー情報を読み取る</button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -1575,16 +1555,14 @@
   const calendarBgInput = document.getElementById('calendar-bg-input');
   const calendarBgResetBtn = document.getElementById('calendar-bg-reset-btn');
   const exportLocalTasksBtn = document.getElementById('export-local-tasks-btn');
-  const exportMenuBtn = document.getElementById('export-menu-btn');
-  const exportMenu = document.getElementById('export-menu');
   const openReadOtherCalendarBtn = document.getElementById('open-read-other-calendar-btn');
   const readOtherCalendarDialog = document.getElementById('read-other-calendar-dialog');
   const readOtherCalendarCloseBtn = document.getElementById('read-other-calendar-close-btn');
   const readOtherCalendarFetchBtn = document.getElementById('read-other-calendar-fetch-btn');
   const readOtherCalendarIdInput = document.getElementById('read-other-calendar-id-input');
   const readOtherCalendarResult = document.getElementById('read-other-calendar-result');
-  const bgSettingsBtn = document.getElementById('bg-settings-btn');
-  const bgSettingsMenu = document.getElementById('bg-settings-menu');
+  const headerSettingsBtn = document.getElementById('header-settings-btn');
+  const headerSettingsMenu = document.getElementById('header-settings-menu');
   const openBgPhotoDialogBtn = document.getElementById('open-bg-photo-dialog-btn');
   const bgPhotoSettingsDialog = document.getElementById('bg-photo-settings-dialog');
   const bgPhotoSettingsCloseBtn = document.getElementById('bg-photo-settings-close-btn');
@@ -2731,29 +2709,19 @@
     renderCalendar();
   });
 
-  bgSettingsBtn.addEventListener('click', (e) => {
+  headerSettingsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    exportMenu.hidden = true;
-    bgSettingsMenu.hidden = !bgSettingsMenu.hidden;
-  });
-
-  exportMenuBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    bgSettingsMenu.hidden = true;
-    exportMenu.hidden = !exportMenu.hidden;
+    headerSettingsMenu.hidden = !headerSettingsMenu.hidden;
   });
 
   document.addEventListener('click', (e) => {
-    if (!bgSettingsMenu.hidden && !bgSettingsMenu.contains(e.target) && e.target !== bgSettingsBtn) {
-      bgSettingsMenu.hidden = true;
-    }
-    if (!exportMenu.hidden && !exportMenu.contains(e.target) && e.target !== exportMenuBtn) {
-      exportMenu.hidden = true;
+    if (!headerSettingsMenu.hidden && !headerSettingsMenu.contains(e.target) && e.target !== headerSettingsBtn) {
+      headerSettingsMenu.hidden = true;
     }
   });
 
   openReadOtherCalendarBtn.addEventListener('click', () => {
-    exportMenu.hidden = true;
+    headerSettingsMenu.hidden = true;
     readOtherCalendarIdInput.value = '';
     readOtherCalendarResult.innerHTML = '';
     readOtherCalendarDialog.showModal();
@@ -2808,7 +2776,7 @@
   });
 
   openBgPhotoDialogBtn.addEventListener('click', () => {
-    bgSettingsMenu.hidden = true;
+    headerSettingsMenu.hidden = true;
     bgPhotoSettingsDialog.showModal();
   });
 
@@ -2823,7 +2791,7 @@
   });
 
   weekdaySettingsBtn.addEventListener('click', () => {
-    bgSettingsMenu.hidden = true;
+    headerSettingsMenu.hidden = true;
     applyCalendarSettingsToInputs();
     weekdaySettingsDialog.showModal();
   });
@@ -2958,6 +2926,7 @@
   });
 
   exportLocalTasksBtn.addEventListener('click', () => {
+    headerSettingsMenu.hidden = true;
     const raw = localStorage.getItem(LOCAL_TASKS_KEY);
     const localTasks = raw ? JSON.parse(raw) : [];
     if (localTasks.length === 0) {
