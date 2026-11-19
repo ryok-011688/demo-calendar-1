@@ -147,6 +147,18 @@
     margin-top: 16px;
   }
 
+  .day-action-main-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .day-action-task-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 12px;
+  }
+
   .weekday-setting-toggle {
     display: flex;
     align-items: center;
@@ -1610,6 +1622,18 @@
     </div>
   </dialog>
 
+  <dialog id="day-action-dialog" class="add-task-dialog">
+    <h2 class="panel-title" id="day-action-dialog-title">📅 予定の操作</h2>
+    <div class="dialog-actions day-action-main-actions">
+      <button type="button" id="day-action-new-btn" class="edit-save-btn">➕ 新規予定を作成</button>
+      <button type="button" id="day-action-edit-btn" class="edit-cancel-btn">✏️ 既存の予定を変更</button>
+    </div>
+    <div class="day-action-task-picker" id="day-action-task-picker" hidden></div>
+    <div class="dialog-actions">
+      <button type="button" id="day-action-cancel-btn" class="edit-cancel-btn">キャンセル</button>
+    </div>
+  </dialog>
+
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script>
   // URLの「?cal=」パラメータで指定された予定表を使う。指定がなければ、
@@ -1719,6 +1743,13 @@
   const moveCopyCopyBtn = document.getElementById('move-copy-copy-btn');
   const moveCopyMoveBtn = document.getElementById('move-copy-move-btn');
   let pendingMove = null;
+  const dayActionDialog = document.getElementById('day-action-dialog');
+  const dayActionDialogTitle = document.getElementById('day-action-dialog-title');
+  const dayActionNewBtn = document.getElementById('day-action-new-btn');
+  const dayActionEditBtn = document.getElementById('day-action-edit-btn');
+  const dayActionTaskPicker = document.getElementById('day-action-task-picker');
+  const dayActionCancelBtn = document.getElementById('day-action-cancel-btn');
+  let dayActionDate = null;
   let colorManuallySet = false;
 
   function renderAll() {
@@ -2284,7 +2315,6 @@
   function buildDayCellTaskChip(t) {
     const item = document.createElement('div');
     item.className = 'day-cell-task' + (t.completed ? ' completed' : '');
-    item.dataset.taskId = t.id;
     const repeatMark = t.repeat ? '🔁 ' : '';
     item.textContent = t.time ? `${repeatMark}${t.time} ${t.text}` : `${repeatMark}${t.text}`;
     if (t.color) {
@@ -2744,6 +2774,19 @@
     taskInput.focus();
   }
 
+  // 日付をダブルクリックした時に「新規作成」か「既存の予定を変更」かを選ばせる
+  function openDayActionDialog(dateStr) {
+    dayActionDate = dateStr;
+    dayActionDialogTitle.textContent = `📅 ${dateStr} の操作`;
+    dayActionTaskPicker.hidden = true;
+    dayActionTaskPicker.innerHTML = '';
+    dayActionEditBtn.hidden = tasks.filter(t => taskOccursOnDate(t, dateStr)).length === 0;
+
+    if (!dayActionDialog.open) {
+      dayActionDialog.showModal();
+    }
+  }
+
   taskColorInput.addEventListener('input', () => {
     colorManuallySet = true;
   });
@@ -2815,19 +2858,14 @@
   calendarGrid.addEventListener('click', (e) => {
     const cell = e.target.closest('.day-cell');
     if (!cell || cell.classList.contains('empty')) return;
-
-    const taskChip = e.target.closest('.day-cell-task');
-    if (taskChip && taskChip.dataset.taskId) {
-      const task = tasks.find(t => t.id === taskChip.dataset.taskId);
-      selectDate(cell.dataset.date);
-      if (task) {
-        openEditTaskDialog(task);
-      }
-      return;
-    }
-
     selectDate(cell.dataset.date);
-    openAddTaskDialog(cell.dataset.date);
+  });
+
+  calendarGrid.addEventListener('dblclick', (e) => {
+    const cell = e.target.closest('.day-cell');
+    if (!cell || cell.classList.contains('empty')) return;
+    selectDate(cell.dataset.date);
+    openDayActionDialog(cell.dataset.date);
   });
 
   calendarGrid.addEventListener('dragover', (e) => {
@@ -2900,6 +2938,51 @@
 
   moveCopyDialog.addEventListener('close', () => {
     pendingMove = null;
+  });
+
+  dayActionNewBtn.addEventListener('click', () => {
+    dayActionDialog.close();
+    openAddTaskDialog(dayActionDate);
+  });
+
+  dayActionEditBtn.addEventListener('click', () => {
+    const dayTasks = tasks.filter(t => taskOccursOnDate(t, dayActionDate));
+    if (dayTasks.length === 1) {
+      dayActionDialog.close();
+      openEditTaskDialog(dayTasks[0]);
+      return;
+    }
+
+    dayActionTaskPicker.innerHTML = '';
+    dayTasks.forEach(t => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'bg-settings-menu-item';
+      const repeatMark = t.repeat ? '🔁 ' : '';
+      btn.textContent = t.time ? `${repeatMark}${t.time} ${t.text}` : `${repeatMark}${t.text}`;
+      btn.addEventListener('click', () => {
+        dayActionDialog.close();
+        openEditTaskDialog(t);
+      });
+      dayActionTaskPicker.appendChild(btn);
+    });
+    dayActionTaskPicker.hidden = false;
+  });
+
+  dayActionCancelBtn.addEventListener('click', () => {
+    dayActionDialog.close();
+  });
+
+  dayActionDialog.addEventListener('click', (e) => {
+    if (e.target === dayActionDialog) {
+      dayActionDialog.close();
+    }
+  });
+
+  dayActionDialog.addEventListener('close', () => {
+    dayActionDate = null;
+    dayActionTaskPicker.hidden = true;
+    dayActionTaskPicker.innerHTML = '';
   });
 
   // --- スマホ向け：タスク一覧を長押し→スライドでカレンダーの日付に移動 ---
