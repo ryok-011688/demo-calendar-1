@@ -530,6 +530,33 @@
     background: var(--border);
   }
 
+  .view-mode-toggle {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .view-mode-btn {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: 6px;
+    padding: 5px 14px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+
+  .view-mode-btn:hover {
+    background: var(--border);
+  }
+
+  .view-mode-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
   .weekday-row {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
@@ -712,6 +739,32 @@
 
   .day-cell-task {
     cursor: grab;
+  }
+
+  .calendar-grid.day-view-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .day-agenda {
+    padding: 12px;
+  }
+
+  .day-agenda-empty {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    padding: 12px 4px;
+  }
+
+  .day-agenda-list {
+    gap: 8px;
+  }
+
+  .day-agenda-list .day-cell-task {
+    font-size: 0.95rem;
+    padding: 10px 14px;
+    border-radius: 8px;
+    white-space: normal;
+    cursor: pointer;
   }
 
   .day-cell-task:active {
@@ -1240,6 +1293,11 @@
       font-size: 0.75rem;
     }
 
+    .view-mode-btn {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+    }
+
     .weekday {
       font-size: 0.75rem;
       padding: 2px 0;
@@ -1363,6 +1421,11 @@
               <button class="month-nav-btn today-btn" id="today-btn">今日</button>
             </div>
             <button class="month-nav-btn" id="next-month-btn">次月 &gt;</button>
+          </div>
+          <div class="view-mode-toggle" id="view-mode-toggle">
+            <button type="button" class="view-mode-btn active" data-mode="month">月</button>
+            <button type="button" class="view-mode-btn" data-mode="week">週</button>
+            <button type="button" class="view-mode-btn" data-mode="day">日</button>
           </div>
           <div class="weekday-row" id="weekday-row"></div>
           <div class="calendar-grid" id="calendar-grid"></div>
@@ -1586,6 +1649,7 @@
   let viewYear = today.getFullYear();
   let viewMonth = today.getMonth();
   let selectedDate = todayStr();
+  let viewMode = 'month'; // 'month' | 'week' | 'day'
   let editingTaskId = null;
 
   const taskInput = document.getElementById('task-input');
@@ -1615,6 +1679,7 @@
   const prevMonthBtn = document.getElementById('prev-month-btn');
   const nextMonthBtn = document.getElementById('next-month-btn');
   const todayBtn = document.getElementById('today-btn');
+  const viewModeToggle = document.getElementById('view-mode-toggle');
   const filterLabel = document.getElementById('filter-label');
   const calendarBg = document.getElementById('calendar-bg');
   const calendarBgInput = document.getElementById('calendar-bg-input');
@@ -2216,7 +2281,107 @@
     }
   }
 
-  function renderCalendar() {
+  function buildDayCellTaskChip(t) {
+    const item = document.createElement('div');
+    item.className = 'day-cell-task' + (t.completed ? ' completed' : '');
+    item.dataset.taskId = t.id;
+    const repeatMark = t.repeat ? '🔁 ' : '';
+    item.textContent = t.time ? `${repeatMark}${t.time} ${t.text}` : `${repeatMark}${t.text}`;
+    if (t.color) {
+      item.style.backgroundColor = t.color;
+      item.style.color = getContrastTextColor(t.color);
+    }
+    item.draggable = true;
+    item.addEventListener('dragstart', (e) => {
+      e.stopPropagation();
+      e.dataTransfer.setData('text/plain', String(t.id));
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    return item;
+  }
+
+  function buildDayCell(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const day = d.getDate();
+    const dow = d.getDay();
+
+    const cell = document.createElement('div');
+    cell.className = 'day-cell';
+    cell.dataset.date = dateStr;
+
+    if (dateStr === todayStr()) {
+      cell.classList.add('today');
+    }
+    if (dateStr === selectedDate) {
+      cell.classList.add('selected');
+    }
+    if (calendarSettings.weekdayColor) {
+      if (dow === 0) cell.classList.add('sun-text');
+      if (dow === 6) cell.classList.add('sat-text');
+    }
+    if (calendarSettings.weekdayBg) {
+      if (dow === 0) cell.classList.add('sun-bg');
+      if (dow === 6) cell.classList.add('sat-bg');
+    }
+    const holidayName = getHolidaysForYear(year)[dateStr];
+    if (holidayName) {
+      cell.title = holidayName;
+      if (calendarSettings.weekdayColor) {
+        cell.classList.add('holiday-text');
+      }
+      if (calendarSettings.weekdayBg) {
+        cell.classList.add('holiday-bg');
+      }
+    }
+
+    const header = document.createElement('div');
+    header.className = 'day-cell-header';
+
+    const dayNumber = document.createElement('span');
+    dayNumber.className = 'day-number';
+    dayNumber.textContent = day;
+    header.appendChild(dayNumber);
+
+    const rokuyo = getRokuyo(year, month + 1, day);
+    const rokuyoLabel = document.createElement('span');
+    rokuyoLabel.className = 'rokuyo';
+    if (rokuyo === '大安') rokuyoLabel.classList.add('taian');
+    if (rokuyo === '仏滅') rokuyoLabel.classList.add('butsumetsu');
+    rokuyoLabel.textContent = rokuyo;
+    header.appendChild(rokuyoLabel);
+
+    cell.appendChild(header);
+
+    if (holidayName) {
+      const holidayLabel = document.createElement('div');
+      holidayLabel.className = 'holiday-label';
+      holidayLabel.textContent = holidayName;
+      cell.appendChild(holidayLabel);
+    }
+
+    const dayTasks = tasks.filter(t => taskOccursOnDate(t, dateStr));
+    if (dayTasks.length > 0) {
+      const taskListEl = document.createElement('div');
+      taskListEl.className = 'day-cell-tasks';
+      dayTasks.forEach(t => {
+        taskListEl.appendChild(buildDayCellTaskChip(t));
+      });
+      cell.appendChild(taskListEl);
+    }
+
+    return cell;
+  }
+
+  function startOfWeekForDate(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    const diff = (d.getDay() - calendarSettings.weekStart + 7) % 7;
+    d.setDate(d.getDate() - diff);
+    return d;
+  }
+
+  function renderMonthView() {
     calendarTitle.textContent = `${viewYear}年${viewMonth + 1}月`;
     calendarGrid.innerHTML = '';
 
@@ -2231,87 +2396,84 @@
     }
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const dateStr = formatDate(viewYear, viewMonth, day);
-      const dow = new Date(viewYear, viewMonth, day).getDay();
-      const cell = document.createElement('div');
-      cell.className = 'day-cell';
-      cell.dataset.date = dateStr;
+      calendarGrid.appendChild(buildDayCell(formatDate(viewYear, viewMonth, day)));
+    }
+  }
 
-      if (dateStr === todayStr()) {
-        cell.classList.add('today');
-      }
-      if (dateStr === selectedDate) {
-        cell.classList.add('selected');
-      }
-      if (calendarSettings.weekdayColor) {
-        if (dow === 0) cell.classList.add('sun-text');
-        if (dow === 6) cell.classList.add('sat-text');
-      }
-      if (calendarSettings.weekdayBg) {
-        if (dow === 0) cell.classList.add('sun-bg');
-        if (dow === 6) cell.classList.add('sat-bg');
-      }
-      const holidayName = getHolidaysForYear(viewYear)[dateStr];
-      if (holidayName) {
-        cell.title = holidayName;
-        if (calendarSettings.weekdayColor) {
-          cell.classList.add('holiday-text');
-        }
-        if (calendarSettings.weekdayBg) {
-          cell.classList.add('holiday-bg');
-        }
-      }
+  function renderWeekView() {
+    const start = startOfWeekForDate(selectedDate);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 6);
+    calendarTitle.textContent =
+      `${formatDate(start.getFullYear(), start.getMonth(), start.getDate())} 〜 ` +
+      `${formatDate(end.getFullYear(), end.getMonth(), end.getDate())}`;
+    calendarGrid.innerHTML = '';
 
-      const header = document.createElement('div');
-      header.className = 'day-cell-header';
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      calendarGrid.appendChild(buildDayCell(formatDate(d.getFullYear(), d.getMonth(), d.getDate())));
+    }
+  }
 
-      const dayNumber = document.createElement('span');
-      dayNumber.className = 'day-number';
-      dayNumber.textContent = day;
-      header.appendChild(dayNumber);
+  function renderDayView() {
+    weekdayRowEl.style.display = 'none';
+    calendarGrid.classList.add('day-view-grid');
+    calendarGrid.innerHTML = '';
 
-      const rokuyo = getRokuyo(viewYear, viewMonth + 1, day);
-      const rokuyoLabel = document.createElement('span');
-      rokuyoLabel.className = 'rokuyo';
-      if (rokuyo === '大安') rokuyoLabel.classList.add('taian');
-      if (rokuyo === '仏滅') rokuyoLabel.classList.add('butsumetsu');
-      rokuyoLabel.textContent = rokuyo;
-      header.appendChild(rokuyoLabel);
+    const dateStr = selectedDate;
+    const d = new Date(dateStr + 'T00:00:00');
+    const todayMark = dateStr === todayStr() ? '（今日）' : `（${WEEKDAY_NAMES_JA[d.getDay()]}）`;
+    calendarTitle.textContent = `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${todayMark}`;
 
-      cell.appendChild(header);
+    const cell = document.createElement('div');
+    cell.className = 'day-cell day-agenda';
+    cell.dataset.date = dateStr;
 
-      if (holidayName) {
-        const holidayLabel = document.createElement('div');
-        holidayLabel.className = 'holiday-label';
-        holidayLabel.textContent = holidayName;
-        cell.appendChild(holidayLabel);
-      }
+    const holidayName = getHolidaysForYear(d.getFullYear())[dateStr];
+    if (holidayName) {
+      const holidayLabel = document.createElement('div');
+      holidayLabel.className = 'holiday-label';
+      holidayLabel.textContent = holidayName;
+      cell.appendChild(holidayLabel);
+    }
 
-      const dayTasks = tasks.filter(t => taskOccursOnDate(t, dateStr));
-      if (dayTasks.length > 0) {
-        const taskListEl = document.createElement('div');
-        taskListEl.className = 'day-cell-tasks';
-        dayTasks.forEach(t => {
-          const item = document.createElement('div');
-          item.className = 'day-cell-task' + (t.completed ? ' completed' : '');
-          const repeatMark = t.repeat ? '🔁 ' : '';
-          item.textContent = t.time ? `${repeatMark}${t.time} ${t.text}` : `${repeatMark}${t.text}`;
-          if (t.color) {
-            item.style.backgroundColor = t.color;
-            item.style.color = getContrastTextColor(t.color);
-          }
-          item.draggable = true;
-          item.addEventListener('dragstart', (e) => {
-            e.stopPropagation();
-            e.dataTransfer.setData('text/plain', String(t.id));
-            e.dataTransfer.effectAllowed = 'move';
-          });
-          taskListEl.appendChild(item);
-        });
-        cell.appendChild(taskListEl);
-      }
+    const dayTasks = tasks.filter(t => taskOccursOnDate(t, dateStr));
+    // 時刻順に並べる（時刻未設定のものは先頭に）
+    const sortedTasks = dayTasks.slice().sort((a, b) => {
+      if (!a.time && !b.time) return 0;
+      if (!a.time) return -1;
+      if (!b.time) return 1;
+      return a.time < b.time ? -1 : a.time > b.time ? 1 : 0;
+    });
 
-      calendarGrid.appendChild(cell);
+    if (sortedTasks.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'day-agenda-empty';
+      empty.textContent = '予定がありません';
+      cell.appendChild(empty);
+    } else {
+      const list = document.createElement('div');
+      list.className = 'day-cell-tasks day-agenda-list';
+      sortedTasks.forEach(t => {
+        list.appendChild(buildDayCellTaskChip(t));
+      });
+      cell.appendChild(list);
+    }
+
+    calendarGrid.appendChild(cell);
+  }
+
+  function renderCalendar() {
+    calendarGrid.classList.remove('day-view-grid');
+    weekdayRowEl.style.display = '';
+
+    if (viewMode === 'week') {
+      renderWeekView();
+    } else if (viewMode === 'day') {
+      renderDayView();
+    } else {
+      renderMonthView();
     }
   }
 
@@ -2653,7 +2815,19 @@
   calendarGrid.addEventListener('click', (e) => {
     const cell = e.target.closest('.day-cell');
     if (!cell || cell.classList.contains('empty')) return;
+
+    const taskChip = e.target.closest('.day-cell-task');
+    if (taskChip && taskChip.dataset.taskId) {
+      const task = tasks.find(t => t.id === taskChip.dataset.taskId);
+      selectDate(cell.dataset.date);
+      if (task) {
+        openEditTaskDialog(task);
+      }
+      return;
+    }
+
     selectDate(cell.dataset.date);
+    openAddTaskDialog(cell.dataset.date);
   });
 
   calendarGrid.addEventListener('dragover', (e) => {
@@ -2914,24 +3088,58 @@
     selectedDate = formatDate(viewYear, viewMonth, Math.min(day, lastDayOfMonth));
   }
 
-  prevMonthBtn.addEventListener('click', () => {
-    viewMonth--;
-    if (viewMonth < 0) {
-      viewMonth = 11;
-      viewYear--;
+  // 週表示・日表示では、選択中の日付を指定日数だけ前後にずらす（表示月もそれに追従させる）
+  function shiftSelectedDateByDays(days) {
+    const d = new Date(selectedDate + 'T00:00:00');
+    d.setDate(d.getDate() + days);
+    selectedDate = formatDate(d.getFullYear(), d.getMonth(), d.getDate());
+    viewYear = d.getFullYear();
+    viewMonth = d.getMonth();
+  }
+
+  function updateNavButtonLabels() {
+    if (viewMode === 'week') {
+      prevMonthBtn.textContent = '< 前週';
+      nextMonthBtn.textContent = '次週 >';
+    } else if (viewMode === 'day') {
+      prevMonthBtn.textContent = '< 前日';
+      nextMonthBtn.textContent = '次日 >';
+    } else {
+      prevMonthBtn.textContent = '< 前月';
+      nextMonthBtn.textContent = '次月 >';
     }
-    moveSelectedDateToViewMonth();
+  }
+
+  prevMonthBtn.addEventListener('click', () => {
+    if (viewMode === 'week') {
+      shiftSelectedDateByDays(-7);
+    } else if (viewMode === 'day') {
+      shiftSelectedDateByDays(-1);
+    } else {
+      viewMonth--;
+      if (viewMonth < 0) {
+        viewMonth = 11;
+        viewYear--;
+      }
+      moveSelectedDateToViewMonth();
+    }
     renderCalendar();
     renderTasks();
   });
 
   nextMonthBtn.addEventListener('click', () => {
-    viewMonth++;
-    if (viewMonth > 11) {
-      viewMonth = 0;
-      viewYear++;
+    if (viewMode === 'week') {
+      shiftSelectedDateByDays(7);
+    } else if (viewMode === 'day') {
+      shiftSelectedDateByDays(1);
+    } else {
+      viewMonth++;
+      if (viewMonth > 11) {
+        viewMonth = 0;
+        viewYear++;
+      }
+      moveSelectedDateToViewMonth();
     }
-    moveSelectedDateToViewMonth();
     renderCalendar();
     renderTasks();
   });
@@ -2940,6 +3148,18 @@
     viewYear = today.getFullYear();
     viewMonth = today.getMonth();
     selectedDate = todayStr();
+    renderCalendar();
+    renderTasks();
+  });
+
+  viewModeToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('.view-mode-btn');
+    if (!btn) return;
+    viewMode = btn.dataset.mode;
+    viewModeToggle.querySelectorAll('.view-mode-btn').forEach(b => {
+      b.classList.toggle('active', b === btn);
+    });
+    updateNavButtonLabels();
     renderCalendar();
     renderTasks();
   });
