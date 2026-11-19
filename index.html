@@ -2856,17 +2856,27 @@
     }
   });
 
+  // ネイティブの dblclick は、1回目のクリックで selectDate() がカレンダー全体を
+  // 再描画してしまう影響でブラウザによっては発火しないことがあるため、
+  // クリック時刻を自前で比較して「同じ日付への素早い連続クリック」を判定する
+  let lastDayClick = { date: null, time: 0 };
+  const DOUBLE_CLICK_MS = 400;
+
   calendarGrid.addEventListener('click', (e) => {
     const cell = e.target.closest('.day-cell');
     if (!cell || cell.classList.contains('empty')) return;
-    selectDate(cell.dataset.date);
-  });
+    const dateStr = cell.dataset.date;
+    const now = Date.now();
 
-  calendarGrid.addEventListener('dblclick', (e) => {
-    const cell = e.target.closest('.day-cell');
-    if (!cell || cell.classList.contains('empty')) return;
-    selectDate(cell.dataset.date);
-    openDayActionDialog(cell.dataset.date);
+    if (lastDayClick.date === dateStr && now - lastDayClick.time < DOUBLE_CLICK_MS) {
+      lastDayClick = { date: null, time: 0 };
+      selectDate(dateStr);
+      openDayActionDialog(dateStr);
+      return;
+    }
+
+    lastDayClick = { date: dateStr, time: now };
+    selectDate(dateStr);
   });
 
   calendarGrid.addEventListener('dragover', (e) => {
