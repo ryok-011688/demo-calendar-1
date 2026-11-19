@@ -240,6 +240,11 @@
     background: var(--border);
   }
 
+  .bg-settings-menu-item:focus,
+  .bg-settings-menu-item:focus-visible {
+    outline: none;
+  }
+
   .calendar-panel .calendar-header h2 {
     color: var(--header-text-color);
   }
@@ -416,19 +421,6 @@
 
   .task-column .task-text {
     color: #e6ded1;
-  }
-
-  .task-column .task-edit-input {
-    border-color: #7ea99a;
-    background: #221f1d;
-    color: #e6ded1;
-  }
-
-  .task-column .task-edit-date-input,
-  .task-column .task-edit-time-input,
-  .task-column .task-edit-color-input {
-    border-color: #3d3a35;
-    background: #221f1d;
   }
 
   .task-column .edit-save-btn {
@@ -1066,42 +1058,6 @@
     color: var(--text-muted);
   }
 
-  .task-edit-input {
-    flex: 1;
-    font-size: 1.05rem;
-    font-family: inherit;
-    padding: 4px 8px;
-    border-radius: 6px;
-    border: 1px solid var(--accent);
-    background: transparent;
-    color: inherit;
-    outline: none;
-  }
-
-  .task-edit-date-input,
-  .task-edit-time-input {
-    height: 36px;
-    padding: 0 8px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: inherit;
-    font-size: 0.9rem;
-    outline: none;
-    flex-shrink: 0;
-  }
-
-  .task-edit-color-input {
-    width: 36px;
-    height: 36px;
-    padding: 2px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-    background: transparent;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-
   .edit-save-btn,
   .edit-cancel-btn {
     border: none;
@@ -1474,7 +1430,7 @@
   </dialog>
 
   <dialog id="add-task-dialog" class="add-task-dialog">
-    <h2 class="panel-title">➕ タスク追加</h2>
+    <h2 class="panel-title" id="add-task-dialog-title">➕ タスク追加</h2>
     <div class="field-group field-group-wide">
       <label class="field-label" for="task-input">📝 タスク内容</label>
       <input type="text" id="task-input" placeholder="タスクを入力..." autocomplete="off">
@@ -1535,6 +1491,16 @@
     <div class="dialog-actions">
       <button type="button" id="add-dialog-cancel-btn" class="edit-cancel-btn">キャンセル</button>
       <button type="button" id="add-btn">＋ 追加</button>
+    </div>
+  </dialog>
+
+  <dialog id="move-copy-dialog" class="add-task-dialog">
+    <h2 class="panel-title">📦 予定の移動</h2>
+    <p class="list-hint">この予定を移動しますか？コピーを作成しますか？</p>
+    <div class="dialog-actions">
+      <button type="button" id="move-copy-cancel-btn" class="edit-cancel-btn">キャンセル</button>
+      <button type="button" id="move-copy-copy-btn" class="edit-cancel-btn">📋 コピー</button>
+      <button type="button" id="move-copy-move-btn" class="edit-save-btn">➡️ 移動する</button>
     </div>
   </dialog>
 
@@ -1628,8 +1594,14 @@
   const weekdayEnglishToggle = document.getElementById('weekday-english-toggle');
   const headerColorInput = document.getElementById('header-color-input');
   const addTaskDialog = document.getElementById('add-task-dialog');
+  const addTaskDialogTitle = document.getElementById('add-task-dialog-title');
   const addDialogCancelBtn = document.getElementById('add-dialog-cancel-btn');
   const openAddDialogBtn = document.getElementById('open-add-dialog-btn');
+  const moveCopyDialog = document.getElementById('move-copy-dialog');
+  const moveCopyCancelBtn = document.getElementById('move-copy-cancel-btn');
+  const moveCopyCopyBtn = document.getElementById('move-copy-copy-btn');
+  const moveCopyMoveBtn = document.getElementById('move-copy-move-btn');
+  let pendingMove = null;
 
   function renderAll() {
     renderCalendar();
@@ -2291,115 +2263,41 @@
       row.appendChild(avatar);
       row.appendChild(checkbox);
 
-      if (editingTaskId === task.id) {
-        const editInput = document.createElement('input');
-        editInput.type = 'text';
-        editInput.className = 'task-edit-input';
-        editInput.value = task.text;
+      const span = document.createElement('span');
+      span.className = 'task-text' + (task.completed ? ' completed' : '');
+      span.textContent = task.repeat ? `🔁 ${task.text}` : task.text;
+      span.title = 'ダブルクリックで編集';
+      span.addEventListener('dblclick', () => {
+        openEditTaskDialog(task);
+      });
+      row.appendChild(span);
 
-        const editDateInput = document.createElement('input');
-        editDateInput.type = 'date';
-        editDateInput.className = 'task-edit-date-input';
-        editDateInput.value = task.date || '';
-
-        const editTimeInput = document.createElement('input');
-        editTimeInput.type = 'time';
-        editTimeInput.className = 'task-edit-time-input';
-        editTimeInput.value = task.time || '';
-
-        const editColorInput = document.createElement('input');
-        editColorInput.type = 'color';
-        editColorInput.className = 'task-edit-color-input';
-        editColorInput.value = task.color || '#6c8cff';
-        editColorInput.title = 'タスクの色';
-
-        const cancelEdit = () => {
-          editingTaskId = null;
-          renderTasks();
-        };
-
-        const commitEdit = () => {
-          const trimmed = editInput.value.trim();
-          if (trimmed) {
-            patchTask(task.id, {
-              text: trimmed,
-              date: editDateInput.value || null,
-              time: editTimeInput.value || null,
-              color: editColorInput.value
-            });
-          }
-          editingTaskId = null;
-          renderTasks();
-        };
-
-        editInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            commitEdit();
-          } else if (e.key === 'Escape') {
-            cancelEdit();
-          }
-        });
-
-        const saveBtn = document.createElement('button');
-        saveBtn.type = 'button';
-        saveBtn.className = 'edit-save-btn';
-        saveBtn.textContent = '保存';
-        saveBtn.addEventListener('click', commitEdit);
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.type = 'button';
-        cancelBtn.className = 'edit-cancel-btn';
-        cancelBtn.textContent = 'キャンセル';
-        cancelBtn.addEventListener('click', cancelEdit);
-
-        row.appendChild(editInput);
-        row.appendChild(editDateInput);
-        row.appendChild(editTimeInput);
-        row.appendChild(editColorInput);
-        row.appendChild(saveBtn);
-        row.appendChild(cancelBtn);
-      } else {
-        const span = document.createElement('span');
-        span.className = 'task-text' + (task.completed ? ' completed' : '');
-        span.textContent = task.repeat ? `🔁 ${task.text}` : task.text;
-        span.title = 'ダブルクリックで編集';
-        span.addEventListener('dblclick', () => {
-          editingTaskId = task.id;
-          renderTasks();
-        });
-        row.appendChild(span);
-      }
-
-      if (task.date && editingTaskId !== task.id) {
+      if (task.date) {
         const dateLabel = document.createElement('span');
         dateLabel.className = 'task-date';
         dateLabel.textContent = task.time ? `${task.date} ${task.time}` : task.date;
         row.appendChild(dateLabel);
       }
 
-      if (editingTaskId !== task.id) {
-        const editBtn = document.createElement('button');
-        editBtn.className = 'edit-btn';
-        editBtn.title = '編集';
-        editBtn.innerHTML = '<span class="btn-text">✏️ 編集</span>' +
-          '<span class="btn-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-          '<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path>' +
-          '</svg></span>';
-        editBtn.addEventListener('click', () => {
-          editingTaskId = task.id;
-          renderTasks();
-        });
-        row.appendChild(editBtn);
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.title = '編集';
+      editBtn.innerHTML = '<span class="btn-text">✏️ 編集</span>' +
+        '<span class="btn-icon"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path>' +
+        '</svg></span>';
+      editBtn.addEventListener('click', () => {
+        openEditTaskDialog(task);
+      });
+      row.appendChild(editBtn);
 
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'delete-btn';
-        deleteBtn.title = '削除';
-        deleteBtn.innerHTML =
-          '<span class="btn-text">' + TRASH_ICON_SVG + ' 削除</span>' +
-          '<span class="btn-icon">' + TRASH_ICON_SVG + '</span>';
-        row.appendChild(deleteBtn);
-      }
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.title = '削除';
+      deleteBtn.innerHTML =
+        '<span class="btn-text">' + TRASH_ICON_SVG + ' 削除</span>' +
+        '<span class="btn-icon">' + TRASH_ICON_SVG + '</span>';
+      row.appendChild(deleteBtn);
 
       li.appendChild(row);
 
@@ -2412,14 +2310,6 @@
 
       taskList.appendChild(li);
     });
-
-    if (editingTaskId !== null) {
-      const activeInput = taskList.querySelector('.task-edit-input');
-      if (activeInput) {
-        activeInput.focus();
-        activeInput.select();
-      }
-    }
   }
 
   function buildRepeatFromInputs() {
@@ -2463,15 +2353,20 @@
     const text = taskInput.value.trim();
     if (!text) return;
 
-    await createTask({
+    const data = {
       text: text,
-      completed: false,
       date: taskDateInput.value || null,
       time: taskTimeInput.value || null,
       detail: taskDetailInput.value.trim() || null,
       color: taskColorInput.value,
       repeat: buildRepeatFromInputs()
-    });
+    };
+
+    if (editingTaskId !== null) {
+      await patchTask(editingTaskId, data);
+    } else {
+      await createTask(Object.assign({ completed: false }, data));
+    }
 
     addTaskDialog.close();
   }
@@ -2482,6 +2377,36 @@
     taskTimeInput.value = '';
     taskDetailInput.value = '';
     resetRepeatInputs();
+  }
+
+  function applyRepeatToInputs(repeat) {
+    taskRepeatSelect.value = repeat ? repeat.type : 'none';
+    weekdayCheckboxes.forEach(cb => {
+      cb.checked = !!(repeat && repeat.type === 'weekly' && repeat.weekdays.includes(Number(cb.value)));
+    });
+    taskRepeatMonthday.value = (repeat && repeat.type === 'monthly') ? repeat.day : '';
+    taskRepeatInterval.value = (repeat && repeat.type === 'custom') ? repeat.interval : '';
+    repeatWeekdayGroup.hidden = !(repeat && repeat.type === 'weekly');
+    repeatMonthdayGroup.hidden = !(repeat && repeat.type === 'monthly');
+    repeatCustomGroup.hidden = !(repeat && repeat.type === 'custom');
+  }
+
+  function openEditTaskDialog(task) {
+    editingTaskId = task.id;
+    taskInput.value = task.text;
+    taskDateInput.value = task.date || '';
+    taskTimeInput.value = task.time || '';
+    taskColorInput.value = task.color || '#6c8cff';
+    taskDetailInput.value = task.detail || '';
+    applyRepeatToInputs(task.repeat);
+
+    addTaskDialogTitle.textContent = '✏️ 予定を編集';
+    addBtn.textContent = '💾 保存';
+
+    if (!addTaskDialog.open) {
+      addTaskDialog.showModal();
+    }
+    taskInput.focus();
   }
 
   function toggleTask(id) {
@@ -2496,6 +2421,9 @@
   }
 
   function openAddTaskDialog(dateStr) {
+    editingTaskId = null;
+    addTaskDialogTitle.textContent = '➕ タスク追加';
+    addBtn.textContent = '＋ 追加';
     taskDateInput.value = dateStr;
     if (!addTaskDialog.open) {
       addTaskDialog.showModal();
@@ -2535,6 +2463,9 @@
 
   addTaskDialog.addEventListener('close', () => {
     resetAddForm();
+    editingTaskId = null;
+    addTaskDialogTitle.textContent = '➕ タスク追加';
+    addBtn.textContent = '＋ 追加';
   });
 
   taskList.addEventListener('click', (e) => {
@@ -2575,7 +2506,56 @@
     cell.classList.remove('drag-over');
 
     const taskId = e.dataTransfer.getData('text/plain');
-    patchTask(taskId, { date: cell.dataset.date });
+    requestTaskMoveOrCopy(taskId, cell.dataset.date);
+  });
+
+  function requestTaskMoveOrCopy(taskId, newDate) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || task.date === newDate) return;
+    pendingMove = { taskId: taskId, newDate: newDate };
+    moveCopyDialog.showModal();
+  }
+
+  moveCopyMoveBtn.addEventListener('click', () => {
+    if (pendingMove) {
+      patchTask(pendingMove.taskId, { date: pendingMove.newDate });
+    }
+    pendingMove = null;
+    moveCopyDialog.close();
+  });
+
+  moveCopyCopyBtn.addEventListener('click', () => {
+    if (pendingMove) {
+      const original = tasks.find(t => t.id === pendingMove.taskId);
+      if (original) {
+        createTask({
+          text: original.text,
+          completed: original.completed,
+          date: pendingMove.newDate,
+          time: original.time || null,
+          detail: original.detail || null,
+          color: original.color || '#6c8cff',
+          repeat: original.repeat || null
+        });
+      }
+    }
+    pendingMove = null;
+    moveCopyDialog.close();
+  });
+
+  moveCopyCancelBtn.addEventListener('click', () => {
+    pendingMove = null;
+    moveCopyDialog.close();
+  });
+
+  moveCopyDialog.addEventListener('click', (e) => {
+    if (e.target === moveCopyDialog) {
+      moveCopyDialog.close();
+    }
+  });
+
+  moveCopyDialog.addEventListener('close', () => {
+    pendingMove = null;
   });
 
   // --- スマホ向け：タスク一覧を長押し→スライドでカレンダーの日付に移動 ---
@@ -2667,7 +2647,7 @@
     }
     touchDragActive = false;
     if (cell) {
-      patchTask(taskId, { date: cell.dataset.date });
+      requestTaskMoveOrCopy(taskId, cell.dataset.date);
     }
   }
 
