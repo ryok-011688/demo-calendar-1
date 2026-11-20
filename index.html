@@ -3602,37 +3602,44 @@
   // --- Googleカレンダー連携（閲覧専用。取得した予定はこのアプリには保存しない） ---
   const GOOGLE_CLIENT_ID = '855017489671-s1ktsh5aq5c58fdkd27gl56ubksm71d6.apps.googleusercontent.com';
   const GOOGLE_CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.readonly';
-  let googleTokenClient = null;
+  let googleAccessToken = null;
+  let googleAccessTokenExpiresAt = 0;
+  let googleCalendarLoading = false;
 
-  function getGoogleTokenClient() {
-    if (googleTokenClient) return googleTokenClient;
+  async function requestGoogleAccessToken() {
     if (!window.google || !window.google.accounts || !window.google.accounts.oauth2) {
-      return null;
+      throw new Error('Googleログイン機能の読み込みに失敗しました。通信環境を確認してください。');
     }
-    googleTokenClient = window.google.accounts.oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
-      scope: GOOGLE_CALENDAR_SCOPE,
-      callback: '' // 呼び出し側でその都度上書きする
-    });
-    return googleTokenClient;
-  }
 
-  function requestGoogleAccessToken() {
-    return new Promise((resolve, reject) => {
-      const client = getGoogleTokenClient();
-      if (!client) {
-        reject(new Error('Googleログイン機能の読み込みに失敗しました。通信環境を確認してください。'));
-        return;
-      }
-      client.callback = (response) => {
-        if (response && response.access_token) {
-          resolve(response.access_token);
-        } else {
-          reject(new Error('ログインが完了しませんでした。'));
+    const response = await new Promise((resolve, reject) => {
+      const client = window.google.accounts.oauth2.initTokenClient({
+        client_id: GOOGLE_CLIENT_ID,
+        scope: GOOGLE_CALENDAR_SCOPE,
+        callback: (response) => {
+          if (response && !response.error && response.access_token) {
+            resolve(response);
+          } else {
+            reject(new Error('ログインが完了しませんでした。'));
+          }
+        },
+        error_callback: (err) => {
+          reject(err);
         }
-      };
+      });
       client.requestAccessToken();
     });
+    googleAccessToken = response.access_token;
+    googleAccessTokenExpiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000 - 60 * 1000;
+    return googleAccessToken;
+  }
+
+  function hasValidGoogleAccessToken() {
+    return googleAccessToken !== null && Date.now() < googleAccessTokenExpiresAt;
+  }
+
+  async function getValidGoogleAccessToken() {
+    if (hasValidGoogleAccessToken()) return googleAccessToken;
+    return requestGoogleAccessToken();
   }
 
   async function fetchGoogleCalendarEvents(accessToken) {
@@ -3654,7 +3661,13 @@
     );
 
     if (!res.ok) {
-      throw new Error('Google Calendar APIの呼び出しに失敗しました（status: ' + res.status + '）');
+      if (res.status === 401 && accessToken === googleAccessToken) {
+        googleAccessToken = null;
+        googleAccessTokenExpiresAt = 0;
+      }
+      const error = new Error('Google Calendar APIの呼び出しに失敗しました（status: ' + res.status + '）');
+      error.status = res.status;
+      throw error;
     }
 
     const data = await res.json();
@@ -3678,11 +3691,29 @@
   }
 
   googleCalendarLoginBtn.addEventListener('click', async () => {
-    googleCalendarResult.innerHTML = '<p class="result-empty">Googleへのログイン画面を確認してください...</p>';
+    if (googleCalendarLoading) return;
+    googleCalendarLoading = true;
+    googleCalendarLoginBtn.disabled = true;
+    let retrying = false;
     try {
-      const accessToken = await requestGoogleAccessToken();
+      if (!hasValidGoogleAccessToken()) {
+        googleCalendarResult.innerHTML = '<p class="result-empty">Googleへのログイン画面を確認してください...</p>';
+      }
+      const accessToken = await getValidGoogleAccessToken();
       googleCalendarResult.innerHTML = '<p class="result-empty">読み込み中...</p>';
-      const events = await fetchGoogleCalendarEvents(accessToken);
+      let events;
+      try {
+        events = await fetchGoogleCalendarEvents(accessToken);
+      } catch (err) {
+        if (err.status !== 401) throw err;
+        retrying = true;
+        if (!hasValidGoogleAccessToken()) {
+          googleCalendarResult.innerHTML = '<p class="result-empty">Googleへのログイン画面を確認してください...</p>';
+        }
+        const newAccessToken = await getValidGoogleAccessToken();
+        googleCalendarResult.innerHTML = '<p class="result-empty">読み込み中...</p>';
+        events = await fetchGoogleCalendarEvents(newAccessToken);
+      }
 
       if (events.length === 0) {
         googleCalendarResult.innerHTML = '<p class="result-empty">今後30日間の予定は見つかりませんでした。</p>';
@@ -3699,13 +3730,22 @@
       });
     } catch (err) {
       console.warn('Googleカレンダーの読み込みに失敗しました', err);
-      googleCalendarResult.innerHTML = '<p class="result-error">読み込みに失敗しました。ログインをキャンセルした場合や、通信環境によってはこのエラーが出ます。</p>';
+      if (retrying && err.type === 'popup_failed_to_open') {
+        googleCalendarResult.innerHTML = '<p class="result-error">もう一度『Googleでログイン』を押してください。</p>';
+      } else {
+        googleCalendarResult.innerHTML = '<p class="result-error">読み込みに失敗しました。ログインをキャンセルした場合や、通信環境によってはこのエラーが出ます。</p>';
+      }
+    } finally {
+      googleCalendarLoading = false;
+      googleCalendarLoginBtn.disabled = false;
+      googleCalendarLoginBtn.textContent = hasValidGoogleAccessToken() ? '予定を読み込む' : 'Googleでログイン';
     }
   });
 
   openGoogleCalendarBtn.addEventListener('click', () => {
     readOtherCalendarDialog.close();
     googleCalendarResult.innerHTML = '';
+    googleCalendarLoginBtn.textContent = hasValidGoogleAccessToken() ? '予定を読み込む' : 'Googleでログイン';
     googleCalendarDialog.showModal();
   });
 
