@@ -21,11 +21,11 @@
     --selected-bg: repeating-linear-gradient(
       0deg,
       var(--selected-stripe-color) 0 1px,
-      transparent 1px 9px
+      transparent 1px 18px
     ), repeating-linear-gradient(
       90deg,
       var(--selected-stripe-color) 0 1px,
-      transparent 1px 9px
+      transparent 1px 18px
     ), var(--selected-color);
     --today-border-color: #2e7d32;
     --danger: #ff6b6b;
@@ -1286,6 +1286,164 @@
     text-align: center;
     color: var(--text-muted);
     padding: 16px 0;
+  }
+
+  /* --- PC表示 --- */
+  @media (min-width: 821px) {
+    body {
+      padding: 16px;
+    }
+
+    .app {
+      width: 96vw;
+      height: 92vh;
+    }
+
+    .calendar-panel {
+      padding: 12px 20px;
+    }
+
+    .calendar-header {
+      margin: -12px -20px 6px;
+      padding-block: 6px;
+    }
+
+    .calendar-header h2 {
+      font-size: 1.65rem;
+      line-height: 1.2;
+    }
+
+    .calendar-header .month-nav-btn {
+      line-height: 1.125;
+    }
+
+    .view-mode-toggle {
+      margin-bottom: 4px;
+    }
+
+    .view-mode-btn {
+      line-height: 1.2;
+    }
+
+    .weekday-row {
+      margin-bottom: 4px;
+    }
+
+    .weekday {
+      font-size: 1.1rem;
+      padding-block: 2px;
+      line-height: 1.2;
+    }
+
+    .calendar-grid {
+      gap: 10px;
+    }
+
+    .day-cell {
+      padding: 8px;
+    }
+
+    /* 6週表示でも日付・祝日名・予定の1行分を確保する */
+    .calendar-grid:not(.day-view-grid) {
+      line-height: 1.1;
+    }
+
+    .day-cell.today {
+      border: 0;
+    }
+
+    .day-cell.today:not(.drag-over) {
+      outline: 3px solid var(--today-border-color);
+      outline-offset: -3px;
+    }
+
+    .day-cell-header {
+      margin-bottom: 2px;
+      flex-wrap: wrap;
+    }
+
+    @media (max-width: 1100px) {
+      .day-cell {
+        padding-inline: 4px;
+      }
+
+      .day-cell-header {
+        gap: 2px;
+      }
+    }
+
+    .day-number {
+      font-size: 1.15rem;
+    }
+
+    .rokuyo {
+      font-size: 0.75rem;
+    }
+
+    .holiday-label {
+      font-size: 0.72rem;
+      flex-shrink: 0;
+    }
+
+    .day-cell-task {
+      font-size: 0.83rem;
+    }
+
+    .day-cell-tasks:not(.day-agenda-list) {
+      display: flex;
+      flex-direction: column;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 2px;
+      overflow: hidden;
+      overflow: clip;
+      min-height: 0;
+    }
+
+    /* 1件目が収まらない場合も次の列へ送る。行間は相殺する */
+    .day-cell-tasks:not(.day-agenda-list)::before {
+      content: '';
+      flex: 0 0 0;
+      width: 100%;
+      margin-bottom: -2px;
+    }
+
+    .day-cell-tasks:not(.day-agenda-list) > .day-cell-task {
+      flex: 0 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .day-agenda {
+      padding: 12px;
+    }
+
+    .day-agenda-list .day-cell-task {
+      font-size: 1.1rem;
+    }
+
+    .task-column .filter-label {
+      font-size: 1.15rem;
+    }
+
+    .task-column .list-hint {
+      font-size: 0.85rem;
+    }
+
+    .task-column .task-text {
+      font-size: 1.18rem;
+    }
+
+    .task-column .task-date,
+    .task-column .task-detail,
+    .task-column .edit-btn,
+    .task-column .delete-btn {
+      font-size: 0.95rem;
+    }
+
+    .task-column .empty-message {
+      font-size: 1.12rem;
+    }
   }
 
   /* --- スマートフォン対応 --- */
