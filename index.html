@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>スケジューラー（Todo兼用）</title>
+<title>ScheTodo</title>
 <style>
   :root {
     --bg: #1a1b1e;
@@ -1438,7 +1438,7 @@
 <body>
   <div class="app">
     <div class="app-header">
-      <h1>スケジューラー（Todo兼用）</h1>
+      <h1>ScheTodo</h1>
       <div class="header-settings">
         <button type="button" class="header-settings-btn" id="header-settings-btn" title="設定" aria-label="設定">
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -1449,9 +1449,7 @@
         <div class="header-settings-menu" id="header-settings-menu" hidden>
           <button type="button" class="bg-settings-menu-item" id="open-bg-photo-dialog-btn">背景設定</button>
           <button type="button" class="bg-settings-menu-item" id="weekday-settings-btn">曜日設定</button>
-          <button type="button" class="bg-settings-menu-item" id="export-local-tasks-btn">ローカルタスクをエクスポート</button>
           <button type="button" class="bg-settings-menu-item" id="open-read-other-calendar-btn">他のカレンダー情報を読み取る</button>
-          <button type="button" class="bg-settings-menu-item" id="open-google-calendar-btn">Googleカレンダーを読み込む</button>
         </div>
       </div>
     </div>
@@ -1547,6 +1545,7 @@
       <button type="button" id="read-other-calendar-fetch-btn" class="edit-save-btn">読み込む</button>
     </div>
     <div id="read-other-calendar-result" class="read-other-calendar-result"></div>
+    <button type="button" class="bg-settings-menu-item" id="open-google-calendar-btn">📅 Googleカレンダーを読み込む</button>
   </dialog>
 
   <dialog id="google-calendar-dialog" class="add-task-dialog">
@@ -1786,7 +1785,6 @@
   const bgScaleInput = document.getElementById('bg-scale-input');
   const bgScaleValue = document.getElementById('bg-scale-value');
   const bgPositionSelect = document.getElementById('bg-position-select');
-  const exportLocalTasksBtn = document.getElementById('export-local-tasks-btn');
   const openReadOtherCalendarBtn = document.getElementById('open-read-other-calendar-btn');
   const readOtherCalendarDialog = document.getElementById('read-other-calendar-dialog');
   const readOtherCalendarCloseBtn = document.getElementById('read-other-calendar-close-btn');
@@ -3563,7 +3561,7 @@
   });
 
   openGoogleCalendarBtn.addEventListener('click', () => {
-    headerSettingsMenu.hidden = true;
+    readOtherCalendarDialog.close();
     googleCalendarResult.innerHTML = '';
     googleCalendarDialog.showModal();
   });
@@ -3784,20 +3782,6 @@
     }
 
     bgPhotoSettingsDialog.close();
-  });
-
-  exportLocalTasksBtn.addEventListener('click', () => {
-    headerSettingsMenu.hidden = true;
-    const raw = localStorage.getItem(LOCAL_TASKS_KEY);
-    const localTasks = raw ? JSON.parse(raw) : [];
-    if (localTasks.length === 0) {
-      alert('この端末のブラウザにはローカル保存されたタスクがありません。');
-      return;
-    }
-    window.prompt(
-      `${localTasks.length}件のタスクが見つかりました。下のテキストを全選択してコピーし、チャットに貼り付けてください。`,
-      JSON.stringify(localTasks)
-    );
   });
 
   initStore();
