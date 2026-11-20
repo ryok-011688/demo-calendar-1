@@ -305,7 +305,7 @@
 
   .calendar-panel .day-cell.selected {
     background: var(--selected-color);
-    color: #1a1b1e;
+    color: #fff;
   }
 
   .calendar-panel .day-cell-task {
@@ -314,8 +314,8 @@
   }
 
   .calendar-panel .day-cell.selected .day-cell-task {
-    background: rgba(255, 255, 255, 0.6);
-    color: #2b3a67;
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
   }
 
   .task-column {
@@ -662,6 +662,11 @@
     background: rgba(21, 101, 192, 0.1);
   }
 
+  .day-cell.selected.sun-text .day-number,
+  .day-cell.selected.sat-text .day-number {
+    color: #fff;
+  }
+
   .day-cell.holiday-text .day-number {
     color: #d32f2f;
   }
@@ -670,9 +675,13 @@
     background: rgba(211, 47, 47, 0.1);
   }
 
+  .day-cell.selected.holiday-text .day-number {
+    color: #fff;
+  }
+
   .day-cell.selected {
     background: var(--selected-color);
-    color: #1a1b1e;
+    color: #fff;
   }
 
   .day-cell-header {
@@ -705,6 +714,15 @@
     color: #bdbdbd;
   }
 
+  .day-cell.selected .rokuyo {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .day-cell.selected .rokuyo.taian,
+  .day-cell.selected .rokuyo.butsumetsu {
+    color: #fff;
+  }
+
   .holiday-label {
     width: 100%;
     font-size: 0.62rem;
@@ -717,6 +735,14 @@
 
   .day-cell.holiday-text .holiday-label {
     color: #d32f2f;
+  }
+
+  .day-cell.selected .holiday-label {
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .day-cell.selected.holiday-text .holiday-label {
+    color: #fff;
   }
 
   .day-cell-tasks {
@@ -829,8 +855,8 @@
   }
 
   .day-cell.selected .day-cell-task {
-    background: rgba(255, 255, 255, 0.6);
-    color: #2b3a67;
+    background: rgba(255, 255, 255, 0.3);
+    color: #fff;
   }
 
   .filter-row-top {
