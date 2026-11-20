@@ -13,7 +13,8 @@
     --text-muted: #8b8d94;
     --accent: #6c8cff;
     --accent-hover: #8aa4ff;
-    --selected-color: #8bc34a;
+    --selected-color: #dcedc8;
+    --today-border-color: #2e7d32;
     --danger: #ff6b6b;
     --danger-hover: #ff8787;
     --header-color: #6c8cff;
@@ -219,6 +220,24 @@
   }
 
 
+  .bg-scale-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .bg-scale-row input[type="range"] {
+    flex: 1;
+    accent-color: #7ea99a;
+  }
+
+  .bg-scale-value {
+    min-width: 3.5em;
+    text-align: right;
+    color: #e6ded1;
+    font-variant-numeric: tabular-nums;
+  }
+
   .calendar-overlay {
     position: absolute;
     inset: 0;
@@ -281,12 +300,12 @@
   }
 
   .calendar-panel .day-cell.today {
-    border-color: var(--accent);
+    border-color: var(--today-border-color);
   }
 
   .calendar-panel .day-cell.selected {
     background: var(--selected-color);
-    color: #fff;
+    color: #1a1b1e;
   }
 
   .calendar-panel .day-cell-task {
@@ -295,8 +314,8 @@
   }
 
   .calendar-panel .day-cell.selected .day-cell-task {
-    background: rgba(255, 255, 255, 0.3);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.6);
+    color: #2b3a67;
   }
 
   .task-column {
@@ -624,7 +643,7 @@
   }
 
   .day-cell.today {
-    border: 2px solid var(--accent);
+    border: 3px solid var(--today-border-color);
   }
 
   .day-cell.sun-text .day-number {
@@ -643,11 +662,6 @@
     background: rgba(21, 101, 192, 0.1);
   }
 
-  .day-cell.selected.sun-text .day-number,
-  .day-cell.selected.sat-text .day-number {
-    color: #fff;
-  }
-
   .day-cell.holiday-text .day-number {
     color: #d32f2f;
   }
@@ -656,13 +670,9 @@
     background: rgba(211, 47, 47, 0.1);
   }
 
-  .day-cell.selected.holiday-text .day-number {
-    color: #fff;
-  }
-
   .day-cell.selected {
     background: var(--selected-color);
-    color: #fff;
+    color: #1a1b1e;
   }
 
   .day-cell-header {
@@ -695,15 +705,6 @@
     color: #bdbdbd;
   }
 
-  .day-cell.selected .rokuyo {
-    color: rgba(255, 255, 255, 0.85);
-  }
-
-  .day-cell.selected .rokuyo.taian,
-  .day-cell.selected .rokuyo.butsumetsu {
-    color: #fff;
-  }
-
   .holiday-label {
     width: 100%;
     font-size: 0.62rem;
@@ -716,14 +717,6 @@
 
   .day-cell.holiday-text .holiday-label {
     color: #d32f2f;
-  }
-
-  .day-cell.selected .holiday-label {
-    color: rgba(255, 255, 255, 0.85);
-  }
-
-  .day-cell.selected.holiday-text .holiday-label {
-    color: #fff;
   }
 
   .day-cell-tasks {
@@ -836,8 +829,8 @@
   }
 
   .day-cell.selected .day-cell-task {
-    background: rgba(255, 255, 255, 0.3);
-    color: #fff;
+    background: rgba(255, 255, 255, 0.6);
+    color: #2b3a67;
   }
 
   .filter-row-top {
@@ -1465,6 +1458,32 @@
     <label class="bg-settings-menu-item" for="calendar-bg-input">背景写真を設定</label>
     <input type="file" id="calendar-bg-input" accept="image/*" hidden>
     <button type="button" class="bg-settings-menu-item" id="calendar-bg-reset-btn">背景をリセット</button>
+    <div class="field-group field-group-wide">
+      <label class="field-label" for="bg-size-select">写真の表示サイズ</label>
+      <select id="bg-size-select">
+        <option value="contain">全体を収める</option>
+        <option value="cover">画面を埋める（はみ出た部分は切り取り）</option>
+        <option value="stretch">引き伸ばす（縦横比を無視）</option>
+        <option value="custom">拡大率を指定</option>
+      </select>
+    </div>
+    <div class="field-group field-group-wide" id="bg-scale-group" hidden>
+      <label class="field-label" for="bg-scale-input">拡大率</label>
+      <div class="bg-scale-row">
+        <input type="range" id="bg-scale-input" min="10" max="300" step="5" value="100">
+        <span class="bg-scale-value" id="bg-scale-value">100%</span>
+      </div>
+    </div>
+    <div class="field-group field-group-wide">
+      <label class="field-label" for="bg-position-select">写真の表示位置</label>
+      <select id="bg-position-select">
+        <option value="center">中央</option>
+        <option value="top">上</option>
+        <option value="bottom">下</option>
+        <option value="left">左</option>
+        <option value="right">右</option>
+      </select>
+    </div>
     <div class="dialog-actions">
       <button type="button" id="bg-photo-settings-close-btn" class="edit-save-btn">閉じる</button>
     </div>
@@ -1654,6 +1673,7 @@
   const calendarId = resolveCalendarId();
   const LOCAL_TASKS_KEY = 'tasks:' + calendarId;
   const LOCAL_BG_KEY = 'calendarBgImage:' + calendarId;
+  const LOCAL_BG_FIT_KEY = 'calendarBgFit:' + calendarId;
   const LOCAL_SETTINGS_KEY = 'calendarSettings:' + calendarId;
 
   let tasks = [];
@@ -1709,6 +1729,11 @@
   const calendarBg = document.getElementById('calendar-bg');
   const calendarBgInput = document.getElementById('calendar-bg-input');
   const calendarBgResetBtn = document.getElementById('calendar-bg-reset-btn');
+  const bgSizeSelect = document.getElementById('bg-size-select');
+  const bgScaleGroup = document.getElementById('bg-scale-group');
+  const bgScaleInput = document.getElementById('bg-scale-input');
+  const bgScaleValue = document.getElementById('bg-scale-value');
+  const bgPositionSelect = document.getElementById('bg-position-select');
   const exportLocalTasksBtn = document.getElementById('export-local-tasks-btn');
   const openReadOtherCalendarBtn = document.getElementById('open-read-other-calendar-btn');
   const readOtherCalendarDialog = document.getElementById('read-other-calendar-dialog');
@@ -1897,6 +1922,10 @@
           if (snap.exists) {
             const data = snap.data();
             applyCalendarBg(data.dataUrl || null);
+            if (data.fit) {
+              applyCalendarBgFit(data.fit);
+              saveCalendarBgFitLocal(data.fit);
+            }
           }
         },
         (err) => {
@@ -2166,6 +2195,53 @@
   const savedCalendarBg = localStorage.getItem(LOCAL_BG_KEY);
   if (savedCalendarBg) {
     applyCalendarBg(savedCalendarBg);
+  }
+
+  const DEFAULT_BG_FIT = { size: 'contain', scale: 100, position: 'center' };
+  const BG_SIZE_VALUES = ['contain', 'cover', 'stretch', 'custom'];
+  const BG_POSITION_VALUES = ['center', 'top', 'bottom', 'left', 'right'];
+  let currentBgFit = Object.assign({}, DEFAULT_BG_FIT);
+
+  function normalizeBgFit(fit) {
+    const f = Object.assign({}, DEFAULT_BG_FIT, fit || {});
+    if (!BG_SIZE_VALUES.includes(f.size)) f.size = DEFAULT_BG_FIT.size;
+    if (!BG_POSITION_VALUES.includes(f.position)) f.position = DEFAULT_BG_FIT.position;
+    const scale = Number(f.scale);
+    f.scale = Number.isFinite(scale) ? Math.min(300, Math.max(10, Math.round(scale))) : DEFAULT_BG_FIT.scale;
+    return f;
+  }
+
+  function applyCalendarBgFit(fit) {
+    currentBgFit = normalizeBgFit(fit);
+    const sizeCss = {
+      contain: 'contain',
+      cover: 'cover',
+      stretch: '100% 100%',
+      custom: currentBgFit.scale + '%',
+    }[currentBgFit.size];
+    calendarBg.style.backgroundSize = sizeCss;
+    calendarBg.style.backgroundPosition = currentBgFit.position;
+
+    bgSizeSelect.value = currentBgFit.size;
+    bgScaleInput.value = String(currentBgFit.scale);
+    bgScaleValue.textContent = currentBgFit.scale + '%';
+    bgPositionSelect.value = currentBgFit.position;
+    bgScaleGroup.hidden = currentBgFit.size !== 'custom';
+  }
+
+  function saveCalendarBgFitLocal(fit) {
+    try {
+      localStorage.setItem(LOCAL_BG_FIT_KEY, JSON.stringify(fit));
+    } catch (err) {
+      console.warn('背景の表示設定の保存に失敗しました', err);
+    }
+  }
+
+  try {
+    const savedFit = localStorage.getItem(LOCAL_BG_FIT_KEY);
+    applyCalendarBgFit(savedFit ? JSON.parse(savedFit) : DEFAULT_BG_FIT);
+  } catch (err) {
+    applyCalendarBgFit(DEFAULT_BG_FIT);
   }
 
   const savedCalendarSettings = localStorage.getItem(LOCAL_SETTINGS_KEY);
@@ -3564,7 +3640,7 @@
 
     if (settingsDocRef) {
       try {
-        await settingsDocRef.set({ dataUrl });
+        await settingsDocRef.set({ dataUrl }, { merge: true });
       } catch (err) {
         console.warn('背景写真の同期に失敗しました', err);
       }
@@ -3578,6 +3654,34 @@
     bgPhotoSettingsDialog.close();
   });
 
+  let bgFitSyncTimer = null;
+  function updateCalendarBgFit(patch) {
+    const fit = normalizeBgFit(Object.assign({}, currentBgFit, patch));
+    applyCalendarBgFit(fit);
+    saveCalendarBgFitLocal(fit);
+    if (settingsDocRef) {
+      // スライダー操作中に書き込みが連続しないよう少し待ってから同期する
+      clearTimeout(bgFitSyncTimer);
+      bgFitSyncTimer = setTimeout(() => {
+        settingsDocRef.set({ fit }, { merge: true }).catch((err) => {
+          console.warn('背景の表示設定の同期に失敗しました', err);
+        });
+      }, 400);
+    }
+  }
+
+  bgSizeSelect.addEventListener('change', () => {
+    updateCalendarBgFit({ size: bgSizeSelect.value });
+  });
+
+  bgScaleInput.addEventListener('input', () => {
+    updateCalendarBgFit({ scale: Number(bgScaleInput.value) });
+  });
+
+  bgPositionSelect.addEventListener('change', () => {
+    updateCalendarBgFit({ position: bgPositionSelect.value });
+  });
+
   calendarBgResetBtn.addEventListener('click', async () => {
     applyCalendarBg(null);
     localStorage.removeItem(LOCAL_BG_KEY);
@@ -3585,7 +3689,7 @@
 
     if (settingsDocRef) {
       try {
-        await settingsDocRef.set({ dataUrl: null });
+        await settingsDocRef.set({ dataUrl: null }, { merge: true });
       } catch (err) {
         console.warn('背景写真のリセットに失敗しました', err);
       }
