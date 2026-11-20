@@ -16,7 +16,11 @@
     --selected-color: #9ccc65;
     --selected-stripe-color: rgba(51, 105, 30, 0.16);
     --selected-bg: repeating-linear-gradient(
-      45deg,
+      0deg,
+      var(--selected-stripe-color) 0 1px,
+      transparent 1px 9px
+    ), repeating-linear-gradient(
+      90deg,
       var(--selected-stripe-color) 0 1px,
       transparent 1px 9px
     ), var(--selected-color);
@@ -1494,6 +1498,13 @@
     <label class="bg-settings-menu-item" for="calendar-bg-input">背景写真を設定</label>
     <input type="file" id="calendar-bg-input" accept="image/*" hidden>
     <button type="button" class="bg-settings-menu-item" id="calendar-bg-reset-btn">背景をリセット</button>
+    <div class="dialog-actions">
+      <button type="button" id="bg-photo-settings-close-btn" class="edit-save-btn">閉じる</button>
+    </div>
+  </dialog>
+
+  <dialog id="bg-fit-dialog" class="add-task-dialog">
+    <h2 class="panel-title">🖼 写真の表示設定</h2>
     <div class="field-group field-group-wide">
       <label class="field-label" for="bg-size-select">写真の表示サイズ</label>
       <select id="bg-size-select">
@@ -1521,7 +1532,7 @@
       </select>
     </div>
     <div class="dialog-actions">
-      <button type="button" id="bg-photo-settings-close-btn" class="edit-save-btn">閉じる</button>
+      <button type="button" id="bg-fit-done-btn" class="edit-save-btn">完了</button>
     </div>
   </dialog>
 
@@ -1573,6 +1584,10 @@
     <label class="weekday-setting-toggle">
       <input type="checkbox" id="weekday-english-toggle">
       曜日を英語表記にする（Sun, Mon, ...）
+    </label>
+    <label class="weekday-setting-toggle">
+      <input type="checkbox" id="rokuyo-toggle">
+      六曜を表示する（大安・仏滅など）
     </label>
     <div class="field-group field-group-wide">
       <label class="field-label" for="header-color-input">🎨 ヘッダー・写真の色合い</label>
@@ -1722,6 +1737,7 @@
     weekdayColor: false,
     weekdayBg: false,
     weekdayEnglish: false,
+    showRokuyo: true,
     headerColor: '#6c8cff'
   };
   let calendarSettings = Object.assign({}, DEFAULT_CALENDAR_SETTINGS);
@@ -1787,6 +1803,8 @@
   const openBgPhotoDialogBtn = document.getElementById('open-bg-photo-dialog-btn');
   const bgPhotoSettingsDialog = document.getElementById('bg-photo-settings-dialog');
   const bgPhotoSettingsCloseBtn = document.getElementById('bg-photo-settings-close-btn');
+  const bgFitDialog = document.getElementById('bg-fit-dialog');
+  const bgFitDoneBtn = document.getElementById('bg-fit-done-btn');
   const weekdayRowEl = document.getElementById('weekday-row');
   const weekdaySettingsBtn = document.getElementById('weekday-settings-btn');
   const weekdaySettingsDialog = document.getElementById('weekday-settings-dialog');
@@ -1795,6 +1813,7 @@
   const weekdayColorToggle = document.getElementById('weekday-color-toggle');
   const weekdayBgToggle = document.getElementById('weekday-bg-toggle');
   const weekdayEnglishToggle = document.getElementById('weekday-english-toggle');
+  const rokuyoToggle = document.getElementById('rokuyo-toggle');
   const headerColorInput = document.getElementById('header-color-input');
   const addTaskDialog = document.getElementById('add-task-dialog');
   const addTaskDialogTitle = document.getElementById('add-task-dialog-title');
@@ -1877,7 +1896,7 @@
         const snap = await getDoc(ref);
         return { exists: snap.exists(), data: () => snap.data() };
       },
-      set: (data) => setDoc(ref, data),
+      set: (data, options) => (options ? setDoc(ref, data, options) : setDoc(ref, data)),
       update: (data) => updateDoc(ref, data),
       delete: () => deleteDoc(ref),
       onSnapshot: (next, onError) => onSnapshot(
@@ -2297,6 +2316,7 @@
     weekdayColorToggle.checked = calendarSettings.weekdayColor;
     weekdayBgToggle.checked = calendarSettings.weekdayBg;
     weekdayEnglishToggle.checked = calendarSettings.weekdayEnglish;
+    rokuyoToggle.checked = calendarSettings.showRokuyo;
     headerColorInput.value = calendarSettings.headerColor;
   }
 
@@ -2487,13 +2507,15 @@
     dayNumber.textContent = day;
     header.appendChild(dayNumber);
 
-    const rokuyo = getRokuyo(year, month + 1, day);
-    const rokuyoLabel = document.createElement('span');
-    rokuyoLabel.className = 'rokuyo';
-    if (rokuyo === '大安') rokuyoLabel.classList.add('taian');
-    if (rokuyo === '仏滅') rokuyoLabel.classList.add('butsumetsu');
-    rokuyoLabel.textContent = rokuyo;
-    header.appendChild(rokuyoLabel);
+    if (calendarSettings.showRokuyo) {
+      const rokuyo = getRokuyo(year, month + 1, day);
+      const rokuyoLabel = document.createElement('span');
+      rokuyoLabel.className = 'rokuyo';
+      if (rokuyo === '大安') rokuyoLabel.classList.add('taian');
+      if (rokuyo === '仏滅') rokuyoLabel.classList.add('butsumetsu');
+      rokuyoLabel.textContent = rokuyo;
+      header.appendChild(rokuyoLabel);
+    }
 
     cell.appendChild(header);
 
@@ -3565,9 +3587,23 @@
     bgPhotoSettingsDialog.close();
   });
 
+  bgPhotoSettingsDialog.addEventListener('close', () => {
+    bgSelectToken++;
+  });
+
   bgPhotoSettingsDialog.addEventListener('click', (e) => {
     if (e.target === bgPhotoSettingsDialog) {
       bgPhotoSettingsDialog.close();
+    }
+  });
+
+  bgFitDoneBtn.addEventListener('click', () => {
+    bgFitDialog.close();
+  });
+
+  bgFitDialog.addEventListener('click', (e) => {
+    if (e.target === bgFitDialog) {
+      bgFitDialog.close();
     }
   });
 
@@ -3601,6 +3637,10 @@
 
   weekdayEnglishToggle.addEventListener('change', () => {
     updateCalendarSettings({ weekdayEnglish: weekdayEnglishToggle.checked });
+  });
+
+  rokuyoToggle.addEventListener('change', () => {
+    updateCalendarSettings({ showRokuyo: rokuyoToggle.checked });
   });
 
   headerColorInput.addEventListener('change', () => {
@@ -3658,9 +3698,12 @@
     return dataUrl;
   }
 
+  let bgSelectToken = 0;
   calendarBgInput.addEventListener('change', async () => {
+    const token = ++bgSelectToken;
     const file = calendarBgInput.files[0];
     if (!file) return;
+    calendarBgInput.value = '';
 
     let dataUrl;
     try {
@@ -3668,26 +3711,34 @@
     } catch (err) {
       console.warn('背景写真の読み込みに失敗しました', err);
       alert('画像の読み込みに失敗しました。別の画像を試してください。');
-      calendarBgInput.value = '';
       return;
     }
 
-    applyCalendarBg(dataUrl);
+    if (token !== bgSelectToken || !bgPhotoSettingsDialog.open) return;
 
     if (settingsDocRef) {
       try {
         await settingsDocRef.set({ dataUrl }, { merge: true });
       } catch (err) {
         console.warn('背景写真の同期に失敗しました', err);
+        alert('背景写真の保存に失敗しました。時間をおいて再度お試しください。');
+        return;
       }
     } else {
       try {
         localStorage.setItem(LOCAL_BG_KEY, dataUrl);
       } catch (err) {
         console.warn('背景画像の保存に失敗しました（サイズが大きすぎる可能性があります）', err);
+        alert('背景写真の保存に失敗しました。画像が大きすぎる可能性があります。時間をおいて再度お試しください。');
+        return;
       }
     }
+    if (token !== bgSelectToken || !bgPhotoSettingsDialog.open) return;
+
+    applyCalendarBg(dataUrl);
     bgPhotoSettingsDialog.close();
+    applyCalendarBgFit(currentBgFit);
+    bgFitDialog.showModal();
   });
 
   let bgFitSyncTimer = null;
@@ -3719,6 +3770,7 @@
   });
 
   calendarBgResetBtn.addEventListener('click', async () => {
+    bgSelectToken++;
     applyCalendarBg(null);
     localStorage.removeItem(LOCAL_BG_KEY);
     calendarBgInput.value = '';
