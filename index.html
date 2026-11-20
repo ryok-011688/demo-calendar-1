@@ -559,6 +559,18 @@
     background: #3d3a35;
   }
 
+  .header-settings-menu .bg-settings-menu-item[hidden] {
+    display: none;
+  }
+
+  .auth-status {
+    padding: 8px 10px;
+    font-size: 0.75rem;
+    color: #a89d8c;
+    contain: inline-size;
+    overflow-wrap: anywhere;
+  }
+
   /* --- カレンダー --- */
   .calendar-header {
     display: flex;
@@ -1635,6 +1647,9 @@
           <button type="button" class="bg-settings-menu-item" id="open-bg-photo-dialog-btn">背景設定</button>
           <button type="button" class="bg-settings-menu-item" id="weekday-settings-btn">曜日設定</button>
           <button type="button" class="bg-settings-menu-item" id="open-read-other-calendar-btn">他のカレンダー情報を読み取る</button>
+          <button type="button" class="bg-settings-menu-item" id="auth-sign-in-btn" hidden>Googleでログイン</button>
+          <div class="auth-status" id="auth-status" hidden></div>
+          <button type="button" class="bg-settings-menu-item" id="auth-sign-out-btn" hidden>ログアウト</button>
         </div>
       </div>
     </div>
@@ -1985,6 +2000,9 @@
   const googleCalendarResult = document.getElementById('google-calendar-result');
   const headerSettingsBtn = document.getElementById('header-settings-btn');
   const headerSettingsMenu = document.getElementById('header-settings-menu');
+  const authSignInBtn = document.getElementById('auth-sign-in-btn');
+  const authStatus = document.getElementById('auth-status');
+  const authSignOutBtn = document.getElementById('auth-sign-out-btn');
   const openBgPhotoDialogBtn = document.getElementById('open-bg-photo-dialog-btn');
   const bgPhotoSettingsDialog = document.getElementById('bg-photo-settings-dialog');
   const bgPhotoSettingsCloseBtn = document.getElementById('bg-photo-settings-close-btn');
@@ -2071,6 +2089,10 @@
     appId: "1:855017489671:web:8697f90d8d397a4c4df1a2"
   };
   const FIREBASE_SDK_VERSION = "10.12.2";
+  let firebaseAppInstance = null;
+  let firestoreDbInstance = null;
+  let firestoreWaitForPendingWrites = null;
+  let currentUser = null;
 
   // 既存コードは「db.collection(path)」「db.doc(path)」という単純な形のAPIを前提に書かれているため、
   // Firestoreの実際の関数呼び出しをその形に合わせて薄くラップする。
@@ -2113,10 +2135,13 @@
       const firestoreFns = await import(
         `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-firestore.js`
       );
-      const { getFirestore, collection, doc } = firestoreFns;
+      const { getFirestore, collection, doc, waitForPendingWrites } = firestoreFns;
 
       const firebaseApp = initializeApp(FIREBASE_CONFIG);
       const firestoreDb = getFirestore(firebaseApp);
+      firebaseAppInstance = firebaseApp;
+      firestoreDbInstance = firestoreDb;
+      firestoreWaitForPendingWrites = waitForPendingWrites;
 
       return {
         collection: (path) => wrapFirestoreCollection(collection(firestoreDb, path), firestoreFns),
@@ -2189,6 +2214,80 @@
           console.error('曜日設定の同期エラー:', err);
         }
       );
+    }
+  }
+
+  async function flushPendingWrites(timeoutMs = 3000) {
+    if (!firestoreDbInstance || !firestoreWaitForPendingWrites) return false;
+
+    let timeoutId;
+    try {
+      return await Promise.race([
+        firestoreWaitForPendingWrites(firestoreDbInstance).then(() => true),
+        new Promise((resolve) => {
+          timeoutId = setTimeout(() => resolve(false), timeoutMs);
+        })
+      ]);
+    } catch {
+      return false;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  async function initAuth() {
+    if (!firebaseAppInstance) return;
+
+    try {
+      const { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } = await import(
+        `https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-auth.js`
+      );
+      const auth = getAuth(firebaseAppInstance);
+      const provider = new GoogleAuthProvider();
+
+      onAuthStateChanged(auth, (user) => {
+        currentUser = user;
+        authSignInBtn.hidden = !!currentUser;
+        authStatus.hidden = !currentUser;
+        authSignOutBtn.hidden = !currentUser;
+        authStatus.textContent = currentUser
+          ? `ログイン中: ${currentUser.displayName || currentUser.email || 'Googleアカウント'}`
+          : '';
+      });
+
+      authSignInBtn.addEventListener('click', async () => {
+        headerSettingsMenu.hidden = true;
+        if (navigator.onLine === false) {
+          alert('オフラインのためログインできません。通信が回復してからお試しください。');
+          return;
+        }
+        try {
+          await signInWithPopup(auth, provider);
+        } catch (err) {
+          const code = err && err.code;
+          if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
+          console.error('Googleログインに失敗しました。', code);
+          alert(`Googleログインに失敗しました。（${code || '不明なエラー'}）`);
+        }
+      });
+
+      authSignOutBtn.addEventListener('click', async () => {
+        headerSettingsMenu.hidden = true;
+        if (!confirm('ログアウトしますか？')) return;
+        if (!await flushPendingWrites()) {
+          alert('まだ同期されていない変更があります。通信状態を確認してから、もう一度ログアウトしてください。');
+          return;
+        }
+        try {
+          await signOut(auth);
+        } catch (err) {
+          const code = err && err.code;
+          console.error('ログアウトに失敗しました。', code);
+          alert(`ログアウトに失敗しました。（${code || '不明なエラー'}）`);
+        }
+      });
+    } catch (err) {
+      console.warn('Firebase Authenticationの初期化に失敗しました。', (err && err.code) || (err && err.name));
     }
   }
 
@@ -3967,7 +4066,7 @@
     bgPhotoSettingsDialog.close();
   });
 
-  initStore();
+  initStore().then(initAuth);
 </script>
 </body>
 </html>
