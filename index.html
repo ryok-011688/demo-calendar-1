@@ -14,11 +14,11 @@
     --accent: #6c8cff;
     --accent-hover: #8aa4ff;
     --selected-color: #9ccc65;
-    --selected-stripe-color: #689f38;
+    --selected-stripe-color: rgba(51, 105, 30, 0.16);
     --selected-bg: repeating-linear-gradient(
       45deg,
-      var(--selected-stripe-color) 0 2px,
-      transparent 2px 7px
+      var(--selected-stripe-color) 0 1px,
+      transparent 1px 9px
     ), var(--selected-color);
     --today-border-color: #2e7d32;
     --danger: #ff6b6b;
@@ -321,8 +321,9 @@
   }
 
   .calendar-panel .day-cell.selected .day-cell-task {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(46, 90, 20, 0.62);
     color: #fff;
+    text-shadow: none;
   }
 
   .task-column {
@@ -863,8 +864,9 @@
   }
 
   .day-cell.selected .day-cell-task {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(46, 90, 20, 0.62);
     color: #fff;
+    text-shadow: none;
   }
 
   .filter-row-top {
