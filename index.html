@@ -409,6 +409,7 @@
   .task-column #task-time-input,
   .task-column #task-detail-input,
   .task-column #task-color-input,
+  .add-task-dialog #invite-link,
   .add-task-dialog #task-input,
   .add-task-dialog #task-date-input,
   .add-task-dialog #task-time-input,
@@ -418,6 +419,22 @@
     background: #221f1d;
     border-color: #3d3a35;
     color: #e6ded1;
+  }
+
+  #invite-link {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid;
+    border-radius: 6px;
+  }
+
+  #calendar-member-list li {
+    margin-bottom: 8px;
+    overflow-wrap: anywhere;
+  }
+
+  #calendar-member-list button {
+    margin-inline-start: 8px;
   }
 
   .task-column .task-avatar {
@@ -1651,6 +1668,8 @@
           <div class="auth-status" id="auth-status" hidden></div>
           <div class="auth-status" id="calendar-membership-status" hidden></div>
           <button type="button" class="bg-settings-menu-item" id="register-calendar-owner-btn" hidden>このカレンダーを自分のものとして登録</button>
+          <button type="button" class="bg-settings-menu-item" id="create-calendar-invite-btn" hidden>メンバーを招待</button>
+          <button type="button" class="bg-settings-menu-item" id="open-calendar-members-btn" hidden>メンバー一覧</button>
           <button type="button" class="bg-settings-menu-item" id="auth-sign-out-btn" hidden>ログアウト</button>
         </div>
       </div>
@@ -1692,6 +1711,36 @@
       </div>
     </div>
   </div>
+
+  <dialog id="calendar-invite-link-dialog" class="add-task-dialog" aria-labelledby="calendar-invite-link-title">
+    <h2 class="panel-title" id="calendar-invite-link-title">メンバーを招待</h2>
+    <p>このリンクは1人だけ・7日間使えます。Googleアカウントでログインして参加してもらいます。</p>
+    <label class="field-label" for="invite-link">招待リンク</label>
+    <input type="text" id="invite-link" readonly>
+    <div id="invite-copy-status" role="status"></div>
+    <div class="dialog-actions">
+      <button type="button" id="calendar-invite-link-close-btn" class="edit-cancel-btn">閉じる</button>
+      <button type="button" id="invite-share-btn" class="edit-save-btn" hidden>共有</button>
+      <button type="button" id="invite-copy-btn" class="edit-save-btn">コピー</button>
+    </div>
+  </dialog>
+
+  <dialog id="calendar-members-dialog" class="add-task-dialog" aria-labelledby="calendar-members-title">
+    <h2 class="panel-title" id="calendar-members-title">メンバー一覧</h2>
+    <ul id="calendar-member-list"></ul>
+    <div class="dialog-actions">
+      <button type="button" id="calendar-members-close-btn" class="edit-cancel-btn">閉じる</button>
+    </div>
+  </dialog>
+
+  <dialog id="calendar-invite-join-dialog" class="add-task-dialog" aria-labelledby="calendar-invite-join-title">
+    <h2 class="panel-title" id="calendar-invite-join-title">カレンダーへの招待</h2>
+    <p>このカレンダーに招待されています。Googleでログインすると参加できます。</p>
+    <div class="dialog-actions">
+      <button type="button" id="calendar-invite-later-btn" class="edit-cancel-btn">あとで</button>
+      <button type="button" id="calendar-invite-sign-in-btn" class="edit-save-btn">Googleでログインして参加</button>
+    </div>
+  </dialog>
 
   <dialog id="bg-photo-settings-dialog" class="add-task-dialog">
     <h2 class="panel-title">🖼 背景設定</h2>
@@ -1928,6 +1977,7 @@
   }
 
   const calendarId = resolveCalendarId();
+  let pendingInviteId = new URLSearchParams(window.location.search).get('invite');
   const LOCAL_TASKS_KEY = 'tasks:' + calendarId;
   const LOCAL_BG_KEY = 'calendarBgImage:' + calendarId;
   const LOCAL_BG_FIT_KEY = 'calendarBgFit:' + calendarId;
@@ -2006,6 +2056,16 @@
   const authStatus = document.getElementById('auth-status');
   const calendarMembershipStatus = document.getElementById('calendar-membership-status');
   const registerCalendarOwnerBtn = document.getElementById('register-calendar-owner-btn');
+  const createCalendarInviteBtn = document.getElementById('create-calendar-invite-btn');
+  const openCalendarMembersBtn = document.getElementById('open-calendar-members-btn');
+  const calendarInviteLinkDialog = document.getElementById('calendar-invite-link-dialog');
+  const inviteLink = document.getElementById('invite-link');
+  const inviteCopyStatus = document.getElementById('invite-copy-status');
+  const inviteShareBtn = document.getElementById('invite-share-btn');
+  const calendarMembersDialog = document.getElementById('calendar-members-dialog');
+  const calendarMemberList = document.getElementById('calendar-member-list');
+  const calendarInviteJoinDialog = document.getElementById('calendar-invite-join-dialog');
+  const calendarInviteSignInBtn = document.getElementById('calendar-invite-sign-in-btn');
   const authSignOutBtn = document.getElementById('auth-sign-out-btn');
   const openBgPhotoDialogBtn = document.getElementById('open-bg-photo-dialog-btn');
   const bgPhotoSettingsDialog = document.getElementById('bg-photo-settings-dialog');
@@ -2099,6 +2159,7 @@
   let firestoreSdk = null;
   let currentUser = null;
   let calendarMeta;
+  let joiningCalendarInvite = false;
 
   // 既存コードは「db.collection(path)」「db.doc(path)」という単純な形のAPIを前提に書かれているため、
   // Firestoreの実際の関数呼び出しをその形に合わせて薄くラップする。
@@ -2248,6 +2309,14 @@
   function renderCalendarMembership() {
     calendarMembershipStatus.hidden = true;
     registerCalendarOwnerBtn.hidden = true;
+    const isOwner = !!currentUser && calendarMeta?.ownerUid === currentUser.uid;
+    createCalendarInviteBtn.hidden = !isOwner;
+    openCalendarMembersBtn.hidden = !isOwner;
+    if (calendarMembersDialog.open) {
+      if (isOwner) renderCalendarMembers();
+      else calendarMembersDialog.close();
+    }
+    if (!isOwner && calendarInviteLinkDialog.open) calendarInviteLinkDialog.close();
     if (!currentUser || calendarMeta === undefined) return;
 
     if (calendarMeta === null) {
@@ -2265,6 +2334,156 @@
       calendarMembershipStatus.textContent = 'このカレンダーのメンバーです';
     }
     calendarMembershipStatus.hidden = false;
+  }
+
+  async function createCalendarInvite() {
+    if (createCalendarInviteBtn.disabled || !currentUser) return;
+    headerSettingsMenu.hidden = true;
+    if (navigator.onLine === false) {
+      alert('オフラインのため招待リンクを作成できません。通信が回復してからお試しください。');
+      return;
+    }
+
+    const { uid } = currentUser;
+    createCalendarInviteBtn.disabled = true;
+    try {
+      const { doc, runTransaction, serverTimestamp, Timestamp } = firestoreSdk;
+      // URLを知っている人だけが招待を取得できるよう、推測しにくいIDを使う。
+      const inviteId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) =>
+        byte.toString(16).padStart(2, '0')
+      ).join('');
+      const calendarRef = doc(firestoreDbInstance, 'calendars', calendarId);
+      const inviteRef = doc(calendarRef, 'invites', inviteId);
+      const created = await runTransaction(firestoreDbInstance, async (transaction) => {
+        const calendarSnap = await transaction.get(calendarRef);
+        if (currentUser?.uid !== uid) return null;
+        if (calendarSnap.data()?.ownerUid !== uid) return false;
+        transaction.set(inviteRef, {
+          createdBy: uid,
+          createdAt: serverTimestamp(),
+          expiresAt: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          usedBy: null,
+          usedAt: null
+        });
+        return true;
+      });
+      if (created === null || currentUser?.uid !== uid) return;
+      if (!created) {
+        alert('所有者ではないため招待リンクを作成できません');
+        return;
+      }
+      if (calendarMeta?.ownerUid !== uid) return;
+
+      inviteLink.value = location.origin + location.pathname + '?cal=' + encodeURIComponent(calendarId) + '&invite=' + inviteId;
+      inviteCopyStatus.textContent = '';
+      inviteShareBtn.hidden = typeof navigator.share !== 'function';
+      calendarInviteLinkDialog.showModal();
+    } catch (err) {
+      const code = err && err.code;
+      console.error(code);
+      alert(`招待リンクの作成に失敗しました。（${code || '不明なエラー'}）`);
+    } finally {
+      createCalendarInviteBtn.disabled = false;
+    }
+  }
+
+  function renderCalendarMembers() {
+    calendarMemberList.replaceChildren();
+    for (const [uid, member] of Object.entries(calendarMeta.members || {})) {
+      const isOwner = uid === calendarMeta.ownerUid;
+      const displayName = member?.displayName || '（名前なし）';
+      const row = document.createElement('li');
+      row.textContent = `${displayName}（${isOwner ? '所有者' : 'メンバー'}）`;
+      if (!isOwner) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'edit-cancel-btn';
+        button.textContent = '外す';
+        button.addEventListener('click', () => removeCalendarMember(uid, displayName, button));
+        row.appendChild(button);
+      }
+      calendarMemberList.appendChild(row);
+    }
+  }
+
+  async function removeCalendarMember(memberUid, displayName, button) {
+    if (!currentUser || calendarMeta?.ownerUid !== currentUser.uid || memberUid === currentUser.uid) return;
+    const { uid } = currentUser;
+    if (!confirm(`${displayName}さんをこのカレンダーから外しますか？`)) return;
+    button.disabled = true;
+    try {
+      const { doc, runTransaction, arrayRemove, deleteField, FieldPath } = firestoreSdk;
+      const ref = doc(firestoreDbInstance, 'calendars', calendarId);
+      // 一覧を開いた後に変更があっても、除外する直前の所有者を確認する。
+      await runTransaction(firestoreDbInstance, async (transaction) => {
+        const snap = await transaction.get(ref);
+        if (currentUser?.uid !== uid || snap.data()?.ownerUid !== uid) return;
+        transaction.update(ref, 'memberUids', arrayRemove(memberUid), new FieldPath('members', memberUid), deleteField());
+      });
+    } catch (err) {
+      const code = err && err.code;
+      console.error(code);
+      alert(`メンバーを外せませんでした。（${code || '不明なエラー'}）`);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function joinCalendarInvite() {
+    if (!currentUser || pendingInviteId === null || joiningCalendarInvite) return;
+    if (navigator.onLine === false) {
+      alert('オフラインのため招待から参加できません。通信が回復してからお試しください。');
+      return;
+    }
+
+    const { uid, displayName } = currentUser;
+    const inviteId = pendingInviteId;
+    joiningCalendarInvite = true;
+    try {
+      const { doc, runTransaction, arrayUnion, serverTimestamp, FieldPath } = firestoreSdk;
+      const calendarRef = doc(firestoreDbInstance, 'calendars', calendarId);
+      // URLの値が別のドキュメントパスとして解釈されないようにする。
+      const inviteRef = /^[0-9a-f]{32}$/.test(inviteId) ? doc(calendarRef, 'invites', inviteId) : null;
+      const result = await runTransaction(firestoreDbInstance, async (transaction) => {
+        const [inviteSnap, calendarSnap] = await Promise.all([
+          inviteRef ? transaction.get(inviteRef) : null,
+          transaction.get(calendarRef)
+        ]);
+        if (currentUser?.uid !== uid) return null;
+        if (!calendarSnap.exists()) return 'このカレンダーは招待に対応していません';
+        const { memberUids } = calendarSnap.data();
+        if (Array.isArray(memberUids) && memberUids.includes(uid)) return 'すでにこのカレンダーのメンバーです';
+        if (!inviteSnap?.exists()) return '招待リンクが見つかりません';
+        const invite = inviteSnap.data();
+        if (typeof invite.expiresAt?.toMillis !== 'function') return 'この招待リンクは無効です';
+        if (invite.usedBy !== null) return 'この招待リンクはすでに使われています';
+        if (invite.expiresAt.toMillis() <= Date.now()) return 'この招待リンクは期限切れです';
+
+        // 参加と招待の消費を同時に確定させ、同じリンクで複数人が参加するのを防ぐ。
+        transaction.update(calendarRef, 'memberUids', arrayUnion(uid), new FieldPath('members', uid), {
+          role: 'member',
+          displayName: displayName || '',
+          joinedAt: serverTimestamp(),
+          inviteId
+        });
+        transaction.update(inviteRef, { usedBy: uid, usedAt: serverTimestamp() });
+        return 'カレンダーに参加しました';
+      });
+      if (result === null || currentUser?.uid !== uid) return;
+      const url = new URL(location.href);
+      url.searchParams.delete('invite');
+      history.replaceState(history.state, '', url);
+      pendingInviteId = null;
+      alert(result);
+    } catch (err) {
+      const code = err && err.code;
+      console.error(code);
+      if (currentUser?.uid === uid) alert(`招待からの参加に失敗しました。（${code || '不明なエラー'}）`);
+    } finally {
+      joiningCalendarInvite = false;
+      // 処理中に別のアカウントでログインした場合も、そのアカウントで参加を試す。
+      if (currentUser && currentUser.uid !== uid) void joinCalendarInvite();
+    }
   }
 
   async function registerCalendarOwner() {
@@ -2328,7 +2547,13 @@
   }
 
   async function initAuth() {
-    if (!firebaseAppInstance) return;
+    function notifyInviteConnectionError() {
+      if (pendingInviteId !== null) alert('通信できないため招待を受け付けられませんでした');
+    }
+    if (!firebaseAppInstance) {
+      notifyInviteConnectionError();
+      return;
+    }
 
     try {
       const { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } = await import(
@@ -2336,6 +2561,7 @@
       );
       const auth = getAuth(firebaseAppInstance);
       const provider = new GoogleAuthProvider();
+      let firstAuthState = true;
 
       onAuthStateChanged(auth, (user) => {
         currentUser = user;
@@ -2346,9 +2572,18 @@
           ? `ログイン中: ${currentUser.displayName || currentUser.email || 'Googleアカウント'}`
           : '';
         renderCalendarMembership();
+        if (pendingInviteId !== null) {
+          if (currentUser) {
+            if (calendarInviteJoinDialog.open) calendarInviteJoinDialog.close();
+            void joinCalendarInvite();
+          } else if (firstAuthState) {
+            calendarInviteJoinDialog.showModal();
+          }
+        }
+        firstAuthState = false;
       });
 
-      authSignInBtn.addEventListener('click', async () => {
+      async function signInWithGoogle() {
         headerSettingsMenu.hidden = true;
         if (navigator.onLine === false) {
           alert('オフラインのためログインできません。通信が回復してからお試しください。');
@@ -2359,10 +2594,12 @@
         } catch (err) {
           const code = err && err.code;
           if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return;
-          console.error('Googleログインに失敗しました。', code);
+          console.error(code);
           alert(`Googleログインに失敗しました。（${code || '不明なエラー'}）`);
         }
-      });
+      }
+      authSignInBtn.addEventListener('click', signInWithGoogle);
+      calendarInviteSignInBtn.addEventListener('click', signInWithGoogle);
 
       authSignOutBtn.addEventListener('click', async () => {
         headerSettingsMenu.hidden = true;
@@ -2381,6 +2618,7 @@
       });
     } catch (err) {
       console.warn('Firebase Authenticationの初期化に失敗しました。', (err && err.code) || (err && err.name));
+      notifyInviteConnectionError();
     }
   }
 
@@ -3771,6 +4009,47 @@
   });
 
   registerCalendarOwnerBtn.addEventListener('click', registerCalendarOwner);
+  createCalendarInviteBtn.addEventListener('click', createCalendarInvite);
+
+  openCalendarMembersBtn.addEventListener('click', () => {
+    if (!currentUser || calendarMeta?.ownerUid !== currentUser.uid) return;
+    headerSettingsMenu.hidden = true;
+    renderCalendarMembers();
+    calendarMembersDialog.showModal();
+  });
+
+  document.getElementById('invite-copy-btn').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink.value);
+      inviteCopyStatus.textContent = '招待リンクをコピーしました。';
+    } catch {
+      inviteLink.focus();
+      inviteLink.select();
+      inviteCopyStatus.textContent = '選択したリンクを手動でコピーしてください。';
+    }
+  });
+
+  inviteShareBtn.addEventListener('click', async () => {
+    try {
+      await navigator.share({ url: inviteLink.value });
+    } catch (err) {
+      if (err.name === 'AbortError') return;
+      const code = err.code;
+      console.error(code);
+      alert(`招待リンクを共有できませんでした。（${code || '不明なエラー'}）`);
+    }
+  });
+
+  for (const [dialog, closeBtnId] of [
+    [calendarInviteLinkDialog, 'calendar-invite-link-close-btn'],
+    [calendarMembersDialog, 'calendar-members-close-btn'],
+    [calendarInviteJoinDialog, 'calendar-invite-later-btn']
+  ]) {
+    document.getElementById(closeBtnId).addEventListener('click', () => dialog.close());
+    dialog.addEventListener('click', (e) => {
+      if (e.target === dialog) dialog.close();
+    });
+  }
 
   document.addEventListener('click', (e) => {
     if (!headerSettingsMenu.hidden && !headerSettingsMenu.contains(e.target) && e.target !== headerSettingsBtn) {
