@@ -1649,6 +1649,8 @@
           <button type="button" class="bg-settings-menu-item" id="open-read-other-calendar-btn">他のカレンダー情報を読み取る</button>
           <button type="button" class="bg-settings-menu-item" id="auth-sign-in-btn" hidden>Googleでログイン</button>
           <div class="auth-status" id="auth-status" hidden></div>
+          <div class="auth-status" id="calendar-membership-status" hidden></div>
+          <button type="button" class="bg-settings-menu-item" id="register-calendar-owner-btn" hidden>このカレンダーを自分のものとして登録</button>
           <button type="button" class="bg-settings-menu-item" id="auth-sign-out-btn" hidden>ログアウト</button>
         </div>
       </div>
@@ -2002,6 +2004,8 @@
   const headerSettingsMenu = document.getElementById('header-settings-menu');
   const authSignInBtn = document.getElementById('auth-sign-in-btn');
   const authStatus = document.getElementById('auth-status');
+  const calendarMembershipStatus = document.getElementById('calendar-membership-status');
+  const registerCalendarOwnerBtn = document.getElementById('register-calendar-owner-btn');
   const authSignOutBtn = document.getElementById('auth-sign-out-btn');
   const openBgPhotoDialogBtn = document.getElementById('open-bg-photo-dialog-btn');
   const bgPhotoSettingsDialog = document.getElementById('bg-photo-settings-dialog');
@@ -2092,7 +2096,9 @@
   let firebaseAppInstance = null;
   let firestoreDbInstance = null;
   let firestoreWaitForPendingWrites = null;
+  let firestoreSdk = null;
   let currentUser = null;
+  let calendarMeta;
 
   // 既存コードは「db.collection(path)」「db.doc(path)」という単純な形のAPIを前提に書かれているため、
   // Firestoreの実際の関数呼び出しをその形に合わせて薄くラップする。
@@ -2142,6 +2148,7 @@
       firebaseAppInstance = firebaseApp;
       firestoreDbInstance = firestoreDb;
       firestoreWaitForPendingWrites = waitForPendingWrites;
+      firestoreSdk = firestoreFns;
 
       return {
         collection: (path) => wrapFirestoreCollection(collection(firestoreDb, path), firestoreFns),
@@ -2214,6 +2221,91 @@
           console.error('曜日設定の同期エラー:', err);
         }
       );
+
+      const handleCalendarMetaError = (err) => {
+        console.warn('カレンダーのメンバー情報の同期エラー:', err);
+        calendarMeta = undefined;
+        renderCalendarMembership();
+      };
+      try {
+        const { doc, onSnapshot } = firestoreSdk;
+        onSnapshot(
+          doc(firestoreDbInstance, 'calendars/' + calendarId),
+          { includeMetadataChanges: true },
+          (snap) => {
+            // キャッシュにないだけの状態を未登録と誤認しないよう、サーバーで確認した結果を使う。
+            calendarMeta = snap.metadata.fromCache ? undefined : (snap.exists() ? snap.data() : null);
+            renderCalendarMembership();
+          },
+          handleCalendarMetaError
+        );
+      } catch (err) {
+        handleCalendarMetaError(err);
+      }
+    }
+  }
+
+  function renderCalendarMembership() {
+    calendarMembershipStatus.hidden = true;
+    registerCalendarOwnerBtn.hidden = true;
+    if (!currentUser || calendarMeta === undefined) return;
+
+    if (calendarMeta === null) {
+      // 今回の移行対象は既定のカレンダーだけなので、他のカレンダーには登録を案内しない。
+      registerCalendarOwnerBtn.hidden = calendarId !== 'main';
+      return;
+    }
+
+    const uid = currentUser.uid;
+    if (!Array.isArray(calendarMeta.memberUids) || !calendarMeta.memberUids.includes(uid)) {
+      calendarMembershipStatus.textContent = 'このカレンダーのメンバーではありません';
+    } else if (calendarMeta.members?.[uid]?.role === 'owner') {
+      calendarMembershipStatus.textContent = 'このカレンダーの所有者です';
+    } else {
+      calendarMembershipStatus.textContent = 'このカレンダーのメンバーです';
+    }
+    calendarMembershipStatus.hidden = false;
+  }
+
+  async function registerCalendarOwner() {
+    if (registerCalendarOwnerBtn.disabled) return;
+    headerSettingsMenu.hidden = true;
+    if (navigator.onLine === false) {
+      alert('オフラインのため登録できません。通信が回復してからお試しください。');
+      return;
+    }
+    if (!confirm('このカレンダー（main）をあなたのGoogleアカウントの所有として登録します。今後、他の人に使ってもらうには招待が必要になります（招待機能は今後追加予定）。登録しますか？')) return;
+    if (!currentUser || calendarId !== 'main' || !firestoreSdk) return;
+
+    const { uid, displayName } = currentUser;
+    registerCalendarOwnerBtn.disabled = true;
+    try {
+      const { doc, runTransaction, serverTimestamp } = firestoreSdk;
+      const ref = doc(firestoreDbInstance, 'calendars/' + calendarId);
+      // 複数人が同時に登録しても、先に作成された所有者を上書きしない。
+      const registered = await runTransaction(firestoreDbInstance, async (transaction) => {
+        const snap = await transaction.get(ref);
+        if (currentUser?.uid !== uid || calendarId !== 'main') return null;
+        if (snap.exists()) return false;
+
+        transaction.set(ref, {
+          schemaVersion: 1,
+          ownerUid: uid,
+          memberUids: [uid],
+          members: {
+            [uid]: { role: 'owner', displayName: displayName || '', joinedAt: serverTimestamp() }
+          },
+          createdAt: serverTimestamp()
+        });
+        return true;
+      });
+      if (registered === false) alert('すでに所有者が登録されています');
+    } catch (err) {
+      const code = err && err.code;
+      console.error(code);
+      alert(`カレンダーの登録に失敗しました。（${code || '不明なエラー'}）`);
+    } finally {
+      registerCalendarOwnerBtn.disabled = false;
     }
   }
 
@@ -2253,6 +2345,7 @@
         authStatus.textContent = currentUser
           ? `ログイン中: ${currentUser.displayName || currentUser.email || 'Googleアカウント'}`
           : '';
+        renderCalendarMembership();
       });
 
       authSignInBtn.addEventListener('click', async () => {
@@ -3676,6 +3769,8 @@
     e.stopPropagation();
     headerSettingsMenu.hidden = !headerSettingsMenu.hidden;
   });
+
+  registerCalendarOwnerBtn.addEventListener('click', registerCalendarOwner);
 
   document.addEventListener('click', (e) => {
     if (!headerSettingsMenu.hidden && !headerSettingsMenu.contains(e.target) && e.target !== headerSettingsBtn) {
